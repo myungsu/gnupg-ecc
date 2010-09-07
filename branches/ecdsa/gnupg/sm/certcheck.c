@@ -70,13 +70,14 @@ do_encode_md (gcry_md_hd_t md, int algo, int pkalgo, unsigned int nbits,
   int n;
   size_t nframe;
   unsigned char *frame;
+  const int gcry_pkalgo = pkalgo;
 
-  if (pkalgo == GCRY_PK_DSA || pkalgo == GCRY_PK_ECDSA)
+  if (gcry_pkalgo == GCRY_PK_DSA || gcry_pkalgo == GCRY_PK_ECDSA)
     {
       unsigned int qbits;
 
-      if ( pkalgo == GCRY_PK_ECDSA )
-        qbits = gcry_pk_get_nbits (pkey);
+      if ( gcry_pkalgo == GCRY_PK_ECDSA )
+        qbits = gcry_pk_get_nbits (pkey);	// but nbits == qbits
       else
         qbits = get_dsa_qbits (pkey);
 
@@ -95,7 +96,7 @@ do_encode_md (gcry_md_hd_t md, int algo, int pkalgo, unsigned int nbits,
       if (qbits < 160)
 	{
 	  log_error (_("%s key uses an unsafe (%u bit) hash\n"),
-                     gcry_pk_algo_name (pkalgo), qbits);
+                     gcry_pk_algo_name (gcry_pkalgo), qbits);
 	  return gpg_error (GPG_ERR_INTERNAL);
 	}
 
@@ -107,9 +108,9 @@ do_encode_md (gcry_md_hd_t md, int algo, int pkalgo, unsigned int nbits,
 	  log_error (_("a %u bit hash is not valid for a %u bit %s key\n"),
                      (unsigned int)nframe*8,
                      gcry_pk_get_nbits (pkey), 
-                     gcry_pk_algo_name (pkalgo));
+                     gcry_pk_algo_name (gcry_pkalgo));
           /* FIXME: we need to check the requirements for ECDSA.  */
-          if (nframe < 20 || pkalgo == GCRY_PK_DSA  )
+          if (nframe < 20 || gcry_pkalgo == GCRY_PK_DSA  )
             return gpg_error (GPG_ERR_INTERNAL);
         }
 
@@ -144,8 +145,8 @@ do_encode_md (gcry_md_hd_t md, int algo, int pkalgo, unsigned int nbits,
       
       if ( len + asnlen + 4  > nframe )
         {
-          log_error ("can't encode a %d bit MD into a %d bits frame\n",
-                     (int)(len*8), (int)nbits);
+          log_error ("can't encode a %d bit MD into a %d bits frame, pkalgo=%d\n",
+                     (int)(len*8), (int)nbits, pkalgo);
           return gpg_error (GPG_ERR_INTERNAL);
         }
       

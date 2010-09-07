@@ -161,8 +161,8 @@ do_encode_md( gcry_md_hd_t md, int algo, size_t len, unsigned nbits,
     gcry_mpi_t a;
 
     if( len + asnlen + 4  > nframe )
-	log_bug("can't encode a %d bit MD into a %d bits frame\n",
-		    (int)(len*8), (int)nbits);
+	log_bug("can't encode a %d bit MD into a %d bits frame, algo=%d\n",
+		    (int)(len*8), (int)nbits, algo);
 
     /* We encode the MD in this way:
      *
@@ -210,15 +210,27 @@ encode_md_value (PKT_public_key *pk, PKT_secret_key *sk,
 		 gcry_md_hd_t md, int hash_algo)
 {
   gcry_mpi_t frame;
+  int gcry_pkalgo;
 
   assert(hash_algo);
   assert(pk || sk);
 
-  if((pk?pk->pubkey_algo:sk->pubkey_algo) == GCRY_PK_DSA)
+  gcry_pkalgo = map_pk_openpgp_to_gcry( pk?pk->pubkey_algo:sk->pubkey_algo );
+  if( gcry_pkalgo == GCRY_PK_DSA || gcry_pkalgo == GCRY_PK_ECDSA )
     {
       /* It's a DSA signature, so find out the size of q. */
 
       size_t qbytes = gcry_mpi_get_nbits (pk?pk->pkey[1]:sk->skey[1]);
+
+      /* pkey[1] is Q for ECDSA, which is an uncompressed point, i.e.  04 <x> <y> */
+      if( gcry_pkalgo==GCRY_PK_ECDSA ) {
+          if( qbytes%8>3 )  {
+      	     log_error(_("ECDSA public key is expected to be in SEC encodin multiple of 8 bits\n"));
+             return NULL;
+          }
+          qbytes -= qbytes%8;
+          qbytes /= 2;
+      }
 
       /* Make sure it is a multiple of 8 bits. */
 
@@ -237,7 +249,8 @@ encode_md_value (PKT_public_key *pk, PKT_secret_key *sk,
 	 DSA. ;) */
       if (qbytes < 160)
 	{
-	  log_error (_("DSA key %s uses an unsafe (%u bit) hash\n"),
+	  log_error (_("%s key %s uses an unsafe (%u bit) hash\n"),
+                     gcry_pk_algo_name( gcry_pkalgo ),	
                      pk?keystr_from_pk(pk):keystr_from_sk(sk),
                      (unsigned int)qbytes);
 	  return NULL;
@@ -249,7 +262,8 @@ encode_md_value (PKT_public_key *pk, PKT_secret_key *sk,
 	 automatically left-truncate. */
       if (gcry_md_get_algo_dlen (hash_algo) < qbytes)
 	{
-	  log_error (_("DSA key %s requires a %u bit or larger hash\n"),
+	  log_error (_("%s key %s requires a %u bit or larger hash\n"),
+                     gcry_pk_algo_name( gcry_pkalgo ),	
                      pk?keystr_from_pk(pk):keystr_from_sk(sk),
                      (unsigned int)(qbytes*8));
 	  return NULL;

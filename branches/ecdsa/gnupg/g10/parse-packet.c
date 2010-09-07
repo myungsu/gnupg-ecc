@@ -1675,6 +1675,42 @@ read_protected_v3_mpi (IOBUF inp, unsigned long *length)
   return val;
 }
 
+static gcry_mpi_t
+name_oid_to_mpi( const byte *name_oid )  {
+  gpg_error_t err;
+  gcry_mpi_t result;
+
+  if( name_oid == NULL || name_oid[0] == 0 )
+    return mpi_new (0);
+   
+  err = gcry_mpi_scan (&result, GCRYMPI_FMT_USG, name_oid, name_oid[0]+1, NULL);
+  if (err)
+    log_fatal ("mpi_scan failed: %s\n", gpg_strerror (err));
+
+  return result;
+}
+
+int
+read_name_oid( iobuf_t inp, byte name_oid[], int name_oid_size  )  {
+	unsigned n_der;
+	//log_debug("Reading OID: begin\n");
+	if( (n_der = iobuf_readbyte(inp)) == -1 ) {
+		return G10ERR_INVALID_PACKET;
+	}
+	if( n_der >= name_oid_size || n_der < 2)  {
+	   log_debug("invalid OID\n");
+	   return G10ERR_INVALID_PACKET;
+	}
+	name_oid[0] = n_der;
+	if( (n_der = iobuf_read(inp, name_oid+1, n_der)) == -1 ) {
+	   log_debug("invalid OID\n");
+	   return G10ERR_INVALID_PACKET;
+	}
+	if( list_mode )
+	    fprintf (listfp,   "\tskey[0]: curve OID [%d] ...%02x %02x\n", n_der, name_oid[n_der-2], name_oid[n_der-1] );
+	//log_debug("Reading OID: success\n");
+	return 0;
+}
 
 static int
 parse_key (IOBUF inp, int pkttype, unsigned long pktlen,
@@ -1799,15 +1835,36 @@ parse_key (IOBUF inp, int pkttype, unsigned long pktlen,
 	    goto leave;
 	}
 
-	for(i=0; i < npkey; i++ ) {
-	    n = pktlen; sk->skey[i] = mpi_read(inp, &n, 0 ); pktlen -=n;
-	    if( list_mode ) {
-		fprintf (listfp,   "\tskey[%d]: ", i);
-		mpi_print(listfp, sk->skey[i], mpi_print_mode  );
+	/* read public portion */
+	if( algorithm != PUBKEY_ALGO_ECDSA )  {
+		for(i=0; i < npkey; i++ ) {
+		    n = pktlen; sk->skey[i] = mpi_read(inp, &n, 0 ); pktlen -=n;
+		    if( list_mode ) {
+			fprintf (listfp,   "\tskey[%d]: ", i);
+			mpi_print(listfp, sk->skey[i], mpi_print_mode  );
+			putc ('\n', listfp);
+		    }
+		    if (!sk->skey[i])
+			rc = G10ERR_INVALID_PACKET;
+		}
+	}
+ 	else  {
+	    byte name_oid[256];
+	    rc = read_name_oid( inp, name_oid, sizeof(name_oid) );
+	    if( rc )
+	        goto leave;
+	    /* make an MPI from the OID for internal convenience */
+	    sk->skey[0] = name_oid_to_mpi(name_oid); pktlen -= (name_oid[0]+1);
+	    /* set item [1], which corresponds to the public key; these two fields are all we need to uniquely define the key */
+	    //log_debug("Parsing ecc public key in the public packet, pktlen=%lu\n", pktlen);
+	    n = pktlen; sk->skey[1] = mpi_read( inp, &n, 0 ); pktlen -=n;
+	    if( sk->skey[1]==NULL )
+		rc = G10ERR_INVALID_PACKET;
+	    else if( list_mode ) {
+		fprintf (listfp,   "\tskey[1]: ");
+		mpi_print(listfp, sk->skey[1], mpi_print_mode);
 		putc ('\n', listfp);
 	    }
-            if (!sk->skey[i])
-                rc = G10ERR_INVALID_PACKET;
 	}
         if (rc) /* one of the MPIs were bad */
             goto leave;
@@ -2027,15 +2084,36 @@ parse_key (IOBUF inp, int pkttype, unsigned long pktlen,
 	    goto leave;
 	}
 
-	for(i=0; i < npkey; i++ ) {
-	    n = pktlen; pk->pkey[i] = mpi_read(inp, &n, 0 ); pktlen -=n;
-	    if( list_mode ) {
-		fprintf (listfp,   "\tpkey[%d]: ", i);
-		mpi_print(listfp, pk->pkey[i], mpi_print_mode  );
+	if( algorithm != PUBKEY_ALGO_ECDSA )  {
+		for(i=0; i < npkey; i++ ) {
+		    n = pktlen; pk->pkey[i] = mpi_read(inp, &n, 0 ); pktlen -=n;
+		    if( list_mode ) {
+			fprintf (listfp,   "\tpkey[%d]: ", i);
+			mpi_print(listfp, pk->pkey[i], mpi_print_mode  );
+			putc ('\n', listfp);
+		    }
+		    if (!pk->pkey[i])
+			rc = G10ERR_INVALID_PACKET;
+		}
+	}
+	else  {
+	    byte name_oid[256];
+	    rc = read_name_oid( inp, name_oid, sizeof(name_oid) );
+	    if( rc )
+	        goto leave;
+	    /* make an MPI from the OID for internal convenience */
+	    pk->pkey[0] = name_oid_to_mpi(name_oid); pktlen -= (name_oid[0]+1);
+	    /* set item [1], which corresponds to the public key; these two fields are all we need to uniquely define the key */
+	    // log_debug("Parsing ecc public key in the public packet, pktlen=%lu\n", pktlen);
+	    n = pktlen; pk->pkey[1] = mpi_read( inp, &n, 0 ); pktlen -=n;
+	    if( pk->pkey[1]==NULL )
+		rc = G10ERR_INVALID_PACKET;
+	    else if( list_mode ) {
+		fprintf (listfp,   "\tpkey[1]: ");
+		mpi_print(listfp, pk->pkey[1], mpi_print_mode);
 		putc ('\n', listfp);
 	    }
-            if (!pk->pkey[i])
-                rc = G10ERR_INVALID_PACKET;
+		
 	}
         if (rc)
             goto leave;

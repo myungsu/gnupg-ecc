@@ -308,8 +308,8 @@ do_sign( PKT_secret_key *sk, PKT_signature *sig,
             gcry_mpi_release (frame);
         }
         if (rc)
-            log_error (_("checking created signature failed: %s\n"),
-                         g10_errstr (rc));
+            log_error (_("checking created signature failed (line %d): %s \n"),
+                         __LINE__, g10_errstr (rc));
         free_public_key (pk);
     }
     if( rc )
@@ -384,7 +384,7 @@ hash_for(PKT_secret_key *sk)
     return opt.def_digest_algo;
   else if( recipient_digest_algo )
     return recipient_digest_algo;
-  else if(sk->pubkey_algo==PUBKEY_ALGO_DSA)
+  else if(sk->pubkey_algo==PUBKEY_ALGO_DSA || sk->pubkey_algo==PUBKEY_ALGO_ECDSA )
     {
       unsigned int qbytes = gcry_mpi_get_nbits (sk->skey[1]) / 8;
 
@@ -865,7 +865,7 @@ sign_file( strlist_t filenames, int detached, strlist_t locusr,
 
 	    for (sk_rover = sk_list; sk_rover; sk_rover = sk_rover->next )
 	      {
-		if (sk_rover->sk->pubkey_algo == PUBKEY_ALGO_DSA)
+		if (sk_rover->sk->pubkey_algo == PUBKEY_ALGO_DSA || sk_rover->sk->pubkey_algo == PUBKEY_ALGO_ECDSA )
 		  {
 		    int temp_hashlen = gcry_mpi_get_nbits
                       (sk_rover->sk->skey[1])+7/8;
@@ -1422,7 +1422,7 @@ make_keysig_packet( PKT_signature **ret_sig, PKT_public_key *pk,
 	else if(sk->pubkey_algo==PUBKEY_ALGO_RSA
 		&& pk->version<4 && sigversion<4)
 	  digest_algo = DIGEST_ALGO_MD5;
-	else if(sk->pubkey_algo==PUBKEY_ALGO_DSA)
+	else if(sk->pubkey_algo==PUBKEY_ALGO_DSA || sk->pubkey_algo==PUBKEY_ALGO_ECDSA)
 	  digest_algo = match_dsa_hash (gcry_mpi_get_nbits (sk->skey[1])/8);
 	else
 	  digest_algo = DIGEST_ALGO_SHA1;

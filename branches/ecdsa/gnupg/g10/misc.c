@@ -64,6 +64,7 @@
 #include "call-agent.h"
 #include "i18n.h"
 
+#include <assert.h>
 
 static int
 string_count_chr (const char *string, int c)
@@ -269,6 +270,7 @@ checksum_mpi (gcry_mpi_t a)
   if ( gcry_mpi_print (GCRYMPI_FMT_PGP, buffer, nbytes, NULL, a) )
     BUG ();
   csum = checksum (buffer, nbytes);
+printf("%s:%d: return %04x\n", __FILE__, __LINE__, csum);
   xfree (buffer);
   return csum;
 }
@@ -348,6 +350,7 @@ map_cipher_openpgp_to_gcry (int algo)
     case CIPHER_ALGO_CAMELLIA128: return 310; 
     case CIPHER_ALGO_CAMELLIA192: return 311; 
     case CIPHER_ALGO_CAMELLIA256: return 312; 
+    case PUBKEY_ALGO_ECDSA: return GCRY_PK_ECDSA; 
     default: return algo;
     }
 }
@@ -361,8 +364,15 @@ map_cipher_gcry_to_openpgp (int algo)
     case 310: return CIPHER_ALGO_CAMELLIA128;
     case 311: return CIPHER_ALGO_CAMELLIA192;
     case 312: return CIPHER_ALGO_CAMELLIA256;
+    case GCRY_PK_ECDSA: return PUBKEY_ALGO_ECDSA; 
     default: return algo;
     }
+}
+
+int
+map_pk_openpgp_to_gcry (int algo)
+{
+  return (algo==PUBKEY_ALGO_ECDSA ? GCRY_PK_ECDSA : algo);
 }
 
 
@@ -412,6 +422,12 @@ openpgp_cipher_algo_name (int algo)
   return gcry_cipher_algo_name (map_cipher_openpgp_to_gcry (algo));
 }
 
+const char *
+openpgp_pk_algo_name (int algo) 
+{
+  return ( algo == PUBKEY_ALGO_ECDSA ? gcry_pk_algo_name(GCRY_PK_ECDSA) : gcry_pk_algo_name (algo) );
+}
+
 int
 openpgp_pk_test_algo( int algo )
 {
@@ -424,7 +440,11 @@ openpgp_pk_test_algo( int algo )
 
   if (algo < 0 || algo > 110)
     return gpg_error (GPG_ERR_PUBKEY_ALGO);
-  return gcry_pk_test_algo (algo);
+
+  if( algo == PUBKEY_ALGO_ECDSA )
+    algo = GCRY_PK_ECDSA;
+
+  return gcry_pk_test_algo ( algo );
 }
 
 int
@@ -442,7 +462,10 @@ openpgp_pk_test_algo2( int algo, unsigned int use )
   if (algo < 0 || algo > 110)
     return gpg_error (GPG_ERR_PUBKEY_ALGO);
 
-  return gcry_pk_algo_info (algo, GCRYCTL_TEST_ALGO, NULL, &use_buf);
+  if( algo == PUBKEY_ALGO_ECDSA )
+    algo = GCRY_PK_ECDSA;
+
+  return gcry_pk_algo_info ( algo, GCRYCTL_TEST_ALGO, NULL, &use_buf);
 }
 
 int 
@@ -472,6 +495,8 @@ openpgp_pk_algo_usage ( int algo )
       case PUBKEY_ALGO_DSA:  
           use = PUBKEY_USAGE_CERT | PUBKEY_USAGE_SIG | PUBKEY_USAGE_AUTH;
           break;
+      case PUBKEY_ALGO_ECDSA:
+          use = PUBKEY_USAGE_CERT | PUBKEY_USAGE_SIG | PUBKEY_USAGE_AUTH;
       default:
           break;
     }
@@ -1308,6 +1333,8 @@ pubkey_get_npkey( int algo )
 
   if (algo == GCRY_PK_ELG_E)
     algo = GCRY_PK_ELG;
+  if (algo == PUBKEY_ALGO_ECDSA)
+    algo = GCRY_PK_ECDSA;
   if (gcry_pk_algo_info( algo, GCRYCTL_GET_ALGO_NPKEY, NULL, &n))
     n = 0;
   return n;
@@ -1321,6 +1348,8 @@ pubkey_get_nskey( int algo )
 
   if (algo == GCRY_PK_ELG_E)
     algo = GCRY_PK_ELG;
+  if (algo == PUBKEY_ALGO_ECDSA)
+    algo = GCRY_PK_ECDSA;
   if (gcry_pk_algo_info( algo, GCRYCTL_GET_ALGO_NSKEY, NULL, &n ))
     n = 0;
   return n;
@@ -1334,6 +1363,8 @@ pubkey_get_nsig( int algo )
 
   if (algo == GCRY_PK_ELG_E)
     algo = GCRY_PK_ELG;
+  if (algo == PUBKEY_ALGO_ECDSA)
+    algo = GCRY_PK_ECDSA;
   if (gcry_pk_algo_info( algo, GCRYCTL_GET_ALGO_NSIGN, NULL, &n))
     n = 0;
   return n;
@@ -1347,6 +1378,8 @@ pubkey_get_nenc( int algo )
   
   if (algo == GCRY_PK_ELG_E)
     algo = GCRY_PK_ELG;
+  if (algo == PUBKEY_ALGO_ECDSA)
+    algo = GCRY_PK_ECDSA;
   if (gcry_pk_algo_info( algo, GCRYCTL_GET_ALGO_NENCR, NULL, &n ))
     n = 0;
   return n;
@@ -1359,6 +1392,8 @@ pubkey_nbits( int algo, gcry_mpi_t *key )
 {
     int rc, nbits;
     gcry_sexp_t sexp;
+
+    assert( algo != GCRY_PK_ECDSA );
 
     if( algo == GCRY_PK_DSA ) {
 	rc = gcry_sexp_build ( &sexp, NULL,
@@ -1373,6 +1408,11 @@ pubkey_nbits( int algo, gcry_mpi_t *key )
     else if( algo == GCRY_PK_RSA ) {
 	rc = gcry_sexp_build ( &sexp, NULL,
 			      "(public-key(rsa(n%m)(e%m)))",
+				  key[0], key[1] );
+    }
+    else if( algo == PUBKEY_ALGO_ECDSA ) {
+	rc = gcry_sexp_build ( &sexp, NULL,
+			      "(public-key(ecdsa(c%m)(q%m)))",
 				  key[0], key[1] );
     }
     else

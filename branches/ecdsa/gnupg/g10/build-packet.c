@@ -173,6 +173,33 @@ mpi_write (iobuf_t out, gcry_mpi_t a)
   return rc;
 }
 
+/*
+ * Write the name OID, encoded as mpi a, to OUT. The format of the content of the MPI is
+ * one byte LEN, following by LEN bytes that are DER representation of an ASN.1 OID 
+ */
+static int
+name_oid_write (iobuf_t out, gcry_mpi_t a)
+{
+  byte buffer[256]; /* Fixed buffer for a public parameter, max possible */
+  size_t nbytes = (mpi_get_nbits (a)+7)/8;
+  int rc;
+
+  if( nbytes > sizeof(buffer) )  {
+      log_info ("mpi with OID is too large (%u bytes)\n", nbytes);
+      return gpg_error (GPG_ERR_TOO_LARGE);
+  }
+  
+  rc = gcry_mpi_print (GCRYMPI_FMT_USG, buffer, sizeof(buffer), &nbytes, a);
+  if( rc )  {
+    log_info ("Failed to exported an mpi with OID\n");
+    return rc;
+  }
+  if( buffer[0] != nbytes-1 )  {
+    log_info ("Internal size mismatch in OID mpi: %02x != %02x\n", buffer[0], nbytes-1);
+    return gpg_error (GPG_ERR_INV_DATA);
+  }
+  return iobuf_write( out, buffer, nbytes );
+}
 
 
 /****************
@@ -267,8 +294,16 @@ do_public_key( IOBUF out, int ctb, PKT_public_key *pk )
   n = pubkey_get_npkey ( pk->pubkey_algo );
   if ( !n )
     write_fake_data( a, pk->pkey[0] );
-  for (i=0; i < n && !rc ; i++ )
-    rc = mpi_write(a, pk->pkey[i] );
+  if( pk->pubkey_algo != PUBKEY_ALGO_ECDSA )  {
+    for (i=0; i < n && !rc ; i++ )
+      rc = mpi_write(a, pk->pkey[i] );
+  }
+  else  {
+     /* DER of OID with preceeding length byte */
+     rc=name_oid_write(a, pk->pkey[0]);
+     if( !rc ) 
+         rc = mpi_write (a, pk->pkey[1]);    /* point Q, the public key */
+  }
 
   if (!rc)
     {
@@ -323,10 +358,20 @@ do_secret_key( IOBUF out, int ctb, PKT_secret_key *sk )
     }
   assert ( npkey < nskey );
 
-  /* Writing the public parameters is easy. */
-  for (i=0; i < npkey; i++ )
-    if ((rc = mpi_write (a, sk->skey[i])))
-      goto leave;
+  if( sk->pubkey_algo != PUBKEY_ALGO_ECDSA )  {
+    /* Writing the public parameters is easy,  */
+    for (i=0; i < npkey; i++ )
+      if ((rc = mpi_write (a, sk->skey[i])))
+        goto leave;
+  }
+  else  {
+     /* ... except we do an adjustment for ECC OID */
+     if( (rc=name_oid_write(a, sk->skey[0])) || /* DER of OID with preceeding length byte */
+         (rc = mpi_write (a, sk->skey[1])) )    /* point Q, the public key */
+    {
+       goto leave;
+    }
+  }
   
   /* Build the header for protected (encrypted) secret parameters.  */
   if ( sk->is_protected ) 

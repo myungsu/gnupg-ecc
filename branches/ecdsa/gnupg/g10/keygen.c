@@ -925,7 +925,7 @@ write_direct_sig (KBNODE root, KBNODE pub_root, PKT_secret_key *sk,
                            keygen_add_revkey, revkey);
   if( rc )
     {
-      log_error("make_keysig_packet failed: %s\n", g10_errstr(rc) );
+      log_error("make_keysig_packet failed (line %d): %s\n", __LINE__, g10_errstr(rc));
       return rc;
     }
   
@@ -974,7 +974,7 @@ write_selfsigs( KBNODE sec_root, KBNODE pub_root, PKT_secret_key *sk,
                            keygen_add_std_prefs, pk);
   if( rc ) 
     {
-      log_error("make_keysig_packet failed: %s\n", g10_errstr(rc) );
+      log_error("make_keysig_packet failed (line %d): %s\n", __LINE__, g10_errstr(rc));
       return rc;
     }
 
@@ -1036,7 +1036,7 @@ write_keybinding (KBNODE root, KBNODE pub_root,
                            keygen_add_key_flags_and_expire, &oduap );
   if (rc) 
     {
-      log_error ("make_keysig_packet failed: %s\n", g10_errstr(rc) );
+      log_error ("make_keysig_packet failed (line %d): %s\n", __LINE__, g10_errstr(rc));
       return rc;
     }
 
@@ -1415,6 +1415,121 @@ gen_dsa (unsigned int nbits, KBNODE pub_root, KBNODE sec_root, DEK *dek,
   return 0;
 }
 
+/****************
+ * Generate a DSA key
+ */
+static int
+gen_ecdsa (unsigned int nbits, KBNODE pub_root, KBNODE sec_root, DEK *dek,
+         STRING2KEY *s2k, PKT_secret_key **ret_sk, 
+         u32 timestamp, u32 expireval, int is_subkey)
+{
+  int rc;
+  PACKET *pkt;
+  PKT_secret_key *sk;
+  PKT_public_key *pk;
+  gcry_sexp_t s_parms, s_key;
+  gcry_sexp_t misc_key_info;
+  unsigned int qbits;
+
+  if( pubkey_get_npkey (PUBKEY_ALGO_ECDSA) != 2 || pubkey_get_nskey (PUBKEY_ALGO_ECDSA) != 3 )  {
+    log_info(_("incompatible version of gcrypt library (expect named curve logic for ECC)\n") );
+    return GPG_ERR_EPROGMISMATCH;
+  }
+
+  if ( nbits != 256 && nbits != 384 && nbits != 521 ) 
+    {
+      nbits = 256;
+      log_info(_("keysize invalid; using %u bits\n"), nbits );
+    }
+
+  /*
+    Figure out a q size based on the key size. See gen_dsa for more details. 
+  */
+  qbits = (nbits < 521 ? nbits : 512 );
+
+  rc = gcry_sexp_build (&s_parms, NULL,
+                        "(genkey(ecdsa(nbits %d)(qbits %d)))",
+                        (int)nbits, (int)qbits);
+  if (rc)
+    log_bug ("ecdsa gcry_sexp_build failed: %s\n", gpg_strerror (rc));
+  
+  rc = gcry_pk_genkey (&s_key, s_parms);
+  gcry_sexp_release (s_parms);
+  if (rc)
+    {
+      log_error ("ecdsa gcry_pk_genkey failed: %s\n", gpg_strerror (rc) );
+      return rc;
+    }
+
+  sk = xmalloc_clear( sizeof *sk );
+  pk = xmalloc_clear( sizeof *pk );
+  sk->timestamp = pk->timestamp = timestamp;
+  sk->version = pk->version = 4;
+  if (expireval) 
+    sk->expiredate = pk->expiredate = sk->timestamp + expireval;
+  sk->pubkey_algo = pk->pubkey_algo = PUBKEY_ALGO_ECDSA;
+
+  rc = key_from_sexp (pk->pkey, s_key, "public-key", "cq");
+  if (rc) 
+    {
+      log_error ("ecdsa key_from_sexp public-key failed: %s\n", gpg_strerror (rc));
+      gcry_sexp_release (s_key);
+      free_public_key(pk);
+      free_secret_key(sk);
+      return rc;
+    }
+  rc = key_from_sexp (sk->skey, s_key, "private-key", "cqd");
+  if (rc) 
+    {
+      log_error ("ecdsa key_from_sexp private-key failed: %s\n", gpg_strerror (rc) );
+      gcry_sexp_release (s_key);
+      free_public_key(pk);
+      free_secret_key(sk);
+      return rc;
+    }
+  misc_key_info = gcry_sexp_find_token (s_key, "misc-key-info", 0);
+  gcry_sexp_release (s_key);
+  
+  sk->is_protected = 0;
+  sk->protect.algo = 0;
+
+  sk->csum = checksum_mpi ( sk->skey[2] );	/* corresponds to 'd' in 'cqd' */
+  if( ret_sk ) /* return an unprotected version of the sk */
+    *ret_sk = copy_secret_key( NULL, sk );
+
+  rc = genhelp_protect (dek, s2k, sk);
+  if (rc)
+    {
+      free_public_key (pk);
+      free_secret_key (sk);
+      gcry_sexp_release (misc_key_info);
+      return rc;
+    }
+
+  pkt = xmalloc_clear(sizeof *pkt);
+  pkt->pkttype = is_subkey ? PKT_PUBLIC_SUBKEY : PKT_PUBLIC_KEY;
+  pkt->pkt.public_key = pk;
+  add_kbnode(pub_root, new_kbnode( pkt ));
+
+  /* Don't know whether it makes sense to have the factors, so for now
+   * we store them in the secret keyring (but they are not secret)
+   * p = 2 * q * f1 * f2 * ... * fn
+   * We store only f1 to f_n-1;  fn can be calculated because p and q
+   * are known.
+   */
+  pkt = xmalloc_clear(sizeof *pkt);
+  pkt->pkttype = is_subkey ? PKT_SECRET_SUBKEY : PKT_SECRET_KEY;
+  pkt->pkt.secret_key = sk;
+  add_kbnode(sec_root, new_kbnode( pkt ));
+
+  genhelp_factors (misc_key_info, sec_root);
+
+  return 0;
+}
+
+
+
+
 
 /* 
  * Generate an RSA key.
@@ -1702,7 +1817,10 @@ ask_algo (int addmode, int *r_subkey_algo, unsigned int *r_usage)
     {
       tty_printf (_("   (%d) DSA (set your own capabilities)\n"), 7 );
       tty_printf (_("   (%d) RSA (set your own capabilities)\n"), 8 );
+
     }
+  
+  tty_printf (_("   (%d) ECDSA (sign only)\n"), 9 );
   
   for(;;)
     {
@@ -1760,6 +1878,12 @@ ask_algo (int addmode, int *r_subkey_algo, unsigned int *r_usage)
           *r_usage = ask_key_flags (algo, addmode);
           break;
 	}
+      else if (algo == 9)
+        {
+          algo = PUBKEY_ALGO_ECDSA;
+          *r_usage = PUBKEY_USAGE_SIG;
+          break;
+	}
       else
         tty_printf (_("Invalid selection.\n"));
     }
@@ -1777,6 +1901,7 @@ ask_keysize (int algo, unsigned int primary_keysize)
   unsigned int nbits, min, def = DEFAULT_STD_KEYSIZE, max=4096;
   int for_subkey = !!primary_keysize;
   int autocomp = 0;
+  const int gcry_algo = ( algo==PUBKEY_ALGO_ECDSA ? GCRY_PK_ECDSA : algo );
 
   if(opt.expert)
     min=512;
@@ -1804,13 +1929,19 @@ ask_keysize (int algo, unsigned int primary_keysize)
       max=3072;
       break;
 
+    case PUBKEY_ALGO_ECDSA:
+      min=256;
+      def=256;
+      max=521;
+      break;
+
     case PUBKEY_ALGO_RSA:
       min=1024;
       break;
     }
 
   tty_printf(_("%s keys may be between %u and %u bits long.\n"),
-	     gcry_pk_algo_name (algo), min, max);
+	     gcry_pk_algo_name (gcry_algo), min, max);
 
   for(;;)
     {
@@ -1829,7 +1960,7 @@ ask_keysize (int algo, unsigned int primary_keysize)
       
       if(nbits<min || nbits>max)
 	tty_printf(_("%s keysizes must be in the range %u-%u\n"),
-		   gcry_pk_algo_name (algo), min, max);
+		   gcry_pk_algo_name (gcry_algo), min, max);
       else
 	break;
     }
@@ -2329,6 +2460,9 @@ do_create (int algo, unsigned int nbits, KBNODE pub_root, KBNODE sec_root,
                  timestamp, expiredate, is_subkey);
   else if( algo == PUBKEY_ALGO_DSA )
     rc = gen_dsa(nbits, pub_root, sec_root, dek, s2k, sk,
+                 timestamp, expiredate, is_subkey);
+  else if( algo == PUBKEY_ALGO_ECDSA )
+    rc = gen_ecdsa(nbits, pub_root, sec_root, dek, s2k, sk,
                  timestamp, expiredate, is_subkey);
   else if( algo == PUBKEY_ALGO_RSA )
     rc = gen_rsa(algo, nbits, pub_root, sec_root, dek, s2k, sk,

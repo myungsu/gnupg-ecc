@@ -147,6 +147,7 @@ do_check( PKT_secret_key *sk, const char *tryagain_text, int mode,
                            This test gets used when we are adding new
                            keys. */
                         sk->csum = csum = checksum (data, ndata-20);
+printf("%s:%d: writing %04x\n", __FILE__, __LINE__, sk->csum);
                       } 
                     gcry_md_close (h);
                 }
@@ -164,6 +165,7 @@ do_check( PKT_secret_key *sk, const char *tryagain_text, int mode,
                         /* This is a PGP 7.0.0 workaround */
                         sk->csum = csumc; /* take the encrypted one */
                     }
+printf("%s:%d: writing %04x\n", __FILE__, __LINE__, sk->csum);
                 }
             }
 
@@ -250,8 +252,10 @@ do_check( PKT_secret_key *sk, const char *tryagain_text, int mode,
 		i < pubkey_get_nskey(sk->pubkey_algo); i++ ) {
 	    csum += checksum_mpi( sk->skey[i] );
 	}
-	if( csum != sk->csum )
+	if( csum != sk->csum )  {
+printf("%s:%d: my %04x != stored %04x\n", __FILE__, __LINE__, csum, sk->csum);
 	    return G10ERR_CHECKSUM;
+	}
     }
 
     return 0;
@@ -405,6 +409,7 @@ protect_secret_key( PKT_secret_key *sk, DEK *dek )
                               " for secret key protection\n")); 
                     csum = checksum( data, ndata-2);
                     sk->csum = csum;
+printf("%s:%d: writing %04x\n", __FILE__, __LINE__, sk->csum);
                     *p++ =	csum >> 8;
                     *p++ =	csum;
                     sk->protect.sha1chk = 0;
@@ -464,6 +469,7 @@ protect_secret_key( PKT_secret_key *sk, DEK *dek )
                                                        data, (nbytes+2)*8 );
 		}
 		sk->csum = csum;
+printf("%s:%d: writing %04x\n", __FILE__, __LINE__, sk->csum);
 	    }
 	    sk->is_protected = 1;
 	    gcry_cipher_close (cipher_hd);

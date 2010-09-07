@@ -89,10 +89,12 @@ int map_cipher_openpgp_to_gcry (int algo);
 int openpgp_cipher_blocklen (int algo);
 int openpgp_cipher_test_algo( int algo );
 const char *openpgp_cipher_algo_name (int algo);
+int map_pk_openpgp_to_gcry (int algo);
 int openpgp_pk_test_algo( int algo );
 int openpgp_pk_test_algo2 ( int algo, unsigned int use );
 int openpgp_pk_algo_usage ( int algo );
 int openpgp_md_test_algo( int algo );
+const char *openpgp_pk_algo_name (int algo);
 
 #ifdef USE_IDEA
 void idea_cipher_warn( int show );

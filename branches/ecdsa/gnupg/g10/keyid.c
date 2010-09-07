@@ -45,6 +45,7 @@ pubkey_letter( int algo )
       case PUBKEY_ALGO_ELGAMAL_E: return 'g';
       case PUBKEY_ALGO_ELGAMAL: return 'G' ;
       case PUBKEY_ALGO_DSA:	return 'D' ;
+      case PUBKEY_ALGO_ECDSA:	return 'E' ;	// ECC DSA (sign only)
       default: return '?';
     }
 }
@@ -75,12 +76,13 @@ hash_public_key( gcry_md_hd_t md, PKT_public_key *pk )
     }
   else
     for(i=0; i < npkey; i++ )
-      {
-	if (gcry_mpi_print (GCRYMPI_FMT_PGP, NULL, 0, &nbytes, pk->pkey[i]))
+      { 
+	const enum gcry_mpi_format fmt = 
+		(pk->pubkey_algo==PUBKEY_ALGO_ECDSA && i==0 ? GCRYMPI_FMT_USG : GCRYMPI_FMT_PGP);
+	if (gcry_mpi_print (fmt, NULL, 0, &nbytes, pk->pkey[i]))
           BUG ();
 	pp[i] = xmalloc (nbytes);
-	if (gcry_mpi_print (GCRYMPI_FMT_PGP, pp[i], nbytes,
-                            &nbytes, pk->pkey[i]))
+	if (gcry_mpi_print (fmt, pp[i], nbytes, &nbytes, pk->pkey[i]))
           BUG ();
         nn[i] = nbytes;
 	n += nn[i];
@@ -114,12 +116,13 @@ hash_public_key( gcry_md_hd_t md, PKT_public_key *pk )
     {
       gcry_md_write (md, pp[0], nn[0]);
     }
-  else
+  else  {
     for(i=0; i < npkey; i++ )
       {
 	gcry_md_write ( md, pp[i], nn[i] );
 	xfree(pp[i]);
       }
+    }
 }
 
 static gcry_md_hd_t
