@@ -1,5 +1,5 @@
 #summary How to build GnuPG
-#labels Phase-Deploy
+#labels Phase-Deploy,Featured
 
 = Introduction =
 
