@@ -3,7 +3,7 @@
 
 = Introduction =
 
-This page lists steps I needed to take to build and setup development environment for GnuPG 2.x on RedHat Fedora Core 13 Linux.  
+This page lists steps I needed to take to build and setup development environment for GnuPG 2.x on `RedHat` Fedora Core 13 Linux.  
 
 = Pre-requisites =
 
