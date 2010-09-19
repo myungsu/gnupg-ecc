@@ -24,7 +24,7 @@ min_automake_version="1.10"
 # Remember to change the version number immediately *after* a release.
 # Set my_issvn to "yes" for non-released code.  Remember to run an
 # "svn up" and "autogen.sh" right before creating a distribution.
-m4_define([my_version], [2.0.16])
+m4_define([my_version], [2.1.0])
 m4_define([my_issvn], [no])
 
 m4_define([svn_revision], m4_esyscmd([printf "%d" $(svn info 2>/dev/null \
@@ -39,8 +39,8 @@ development_version=no
 
 NEED_GPG_ERROR_VERSION=1.7
 
-NEED_LIBGCRYPT_API=1
-NEED_LIBGCRYPT_VERSION=1.4.0
+NEED_LIBGCRYPT_API=2
+NEED_LIBGCRYPT_VERSION=1.5.0
 
 NEED_LIBASSUAN_API=2
 NEED_LIBASSUAN_VERSION=2.0.0
