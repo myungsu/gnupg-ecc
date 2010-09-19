@@ -851,7 +851,7 @@ my_strusage( int level )
       case 34:
 	if (!pubkeys)
             pubkeys = build_list (_("Pubkey: "), 0,
-                                  gcry_pk_algo_name,
+                                  openpgp_pk_algo_name,
                                   openpgp_pk_test_algo );
 	p = pubkeys;
 	break;
