@@ -1,4 +1,4 @@
-#summary How to build GnuPG
+﻿#summary How to build GnuPG
 #labels Phase-Deploy,Featured
 
 = Introduction =
@@ -16,12 +16,6 @@ yum groupinstall "Development Tools"
   }}}
   
   This step is here for general guidance. We assume that you are familiar with installing development environment.   
-
-  * *libassuan*. This is IPC library.
-
-  {{{ 
-yum install libassuan-devel
-  }}}
 
   * *libksba*. This is X.509 management library.
 
@@ -41,7 +35,7 @@ yum install pth-devel
 yum install transfig (for fig2dev missing)
    }}}
 
-   * On 64 bit FC13 I needed to remove 64 bit version and install 32 bit version of textinto ({{{texinfo-4.13a-9.fc13.i686}}}).
+   * On 64 bit FC13 I needed to remove 64 bit version and install earlier 32 bit version of texinfo ({{{texinfo-4.13a-4.fc11.i586.rpm}}}). The existing 64 bit versions were crashing at make time of libgcrypt.
 
 = Compiling =
 
@@ -63,7 +57,8 @@ make
 sudo -c "make install"
   }}}
 
-  At this time there are no project-specific changes in this library and you can use standard {{{-devel}}} package instead, if you prefer.  
+  At this time there are no project-specific changes in this library and you can use standard {{{-devel}}} package instead, if you prefer. As soon as version 1.8 of libgpg-error becomes available in FC13 RPM repository, this module will be removed. 
+
 
   *  Compile *libassuan*
 
@@ -75,7 +70,7 @@ make
 sudo -c "make install"
   }}}
 
-  At this time there are no project-specific changes in this library and you can use standard {{{-devel}}} package instead, if you prefer. As soon as version 2.0 of libassuan becomes available in FC13 RPM repository, this module will be removed. We don't anticipate that the ECC-related changes are needed to this module.   
+  At this time there are no project-specific changes in this library and you can use standard {{{-devel}}} package instead, if you prefer. As soon as version 2.0 of libassuan becomes available in FC13 RPM repository, this module will be removed. 
 
   * Compile *libgcrypt*
 
@@ -110,4 +105,13 @@ cd gnupg
 g10/gpg2 --gen-key
   }}}
 
-  should offer you the ECDSA key generation option. 
+  will display the ECDSA + ECDH key generation option. Once you generate the key, you would work with it just as you do with any RSA key, encrypting/decrypting or signing/verifying as usual.
+
+= Debugging =
+
+  * Additional ECC-releated information is available with the the {{{--debug 15}}} option, for example:
+
+  {{{
+g10/gpg2 --debug 15 --gen-key
+  }}}
+
