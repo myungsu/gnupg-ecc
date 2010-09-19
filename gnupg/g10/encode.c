@@ -807,6 +807,8 @@ write_pubkey_enc_from_list( PK_LIST pk_list, DEK *dek, IOBUF out )
 
     for( ; pk_list; pk_list = pk_list->next ) {
 	gcry_mpi_t frame;
+	byte fp[MAX_FINGERPRINT_LEN]; 
+	size_t fpn;
 
 	pk = pk_list->pk;
 
@@ -823,6 +825,9 @@ write_pubkey_enc_from_list( PK_LIST pk_list, DEK *dek, IOBUF out )
 	    compliance_failure();
 	  }
 
+	fingerprint_from_pk( pk, fp, &fpn );
+	assert( fpn == 20 );
+
 	/* Okay, what's going on: We have the session key somewhere in
 	 * the structure DEK and want to encode this session key in
 	 * an integer value of n bits.	pubkey_nbits gives us the
@@ -836,9 +841,8 @@ write_pubkey_enc_from_list( PK_LIST pk_list, DEK *dek, IOBUF out )
 	 * have everything now in enc->data which is the passed to
 	 * build_packet()
 	 */
-	frame = encode_session_key (dek, pubkey_nbits (pk->pubkey_algo,
-                                                       pk->pkey) );
-	rc = pk_encrypt (pk->pubkey_algo, enc->data, frame, pk->pkey);
+	frame = encode_session_key ( pk->pubkey_algo, dek, pubkey_nbits (pk->pubkey_algo, pk->pkey) );
+	rc = pk_encrypt (pk->pubkey_algo, enc->data, frame, fp, pk->pkey);
 	gcry_mpi_release (frame);
 	if( rc )
 	    log_error ("pubkey_encrypt failed: %s\n", gpg_strerror (rc) );

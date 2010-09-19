@@ -64,6 +64,7 @@
 #include "call-agent.h"
 #include "i18n.h"
 
+#include <assert.h>
 
 static int
 string_count_chr (const char *string, int c)
@@ -294,7 +295,7 @@ print_pubkey_algo_note( int algo )
 	{
 	  warn=1;
 	  log_info (_("WARNING: using experimental public key algorithm %s\n"),
-		    gcry_pk_algo_name (algo));
+		    openpgp_cipher_algo_name (algo));
 	}
     }
   else if (algo == 20)
@@ -365,6 +366,12 @@ map_cipher_gcry_to_openpgp (int algo)
     }
 }
 
+int
+map_pk_openpgp_to_gcry (int algo)
+{
+  return (algo==PUBKEY_ALGO_ECDSA ? GCRY_PK_ECDSA : (algo==PUBKEY_ALGO_ECDH ? GCRY_PK_ECDH : algo));
+}
+
 
 /* Return the block length of an OpenPGP cipher algorithm.  */
 int 
@@ -412,6 +419,12 @@ openpgp_cipher_algo_name (int algo)
   return gcry_cipher_algo_name (map_cipher_openpgp_to_gcry (algo));
 }
 
+const char *
+openpgp_pk_algo_name (int algo) 
+{
+  return gcry_pk_algo_name ( algo == PUBKEY_ALGO_ECDSA ? GCRY_PK_ECDSA : ( algo == PUBKEY_ALGO_ECDH ? GCRY_PK_ECDH : algo ) );
+}
+
 int
 openpgp_pk_test_algo( int algo )
 {
@@ -424,7 +437,13 @@ openpgp_pk_test_algo( int algo )
 
   if (algo < 0 || algo > 110)
     return gpg_error (GPG_ERR_PUBKEY_ALGO);
-  return gcry_pk_test_algo (algo);
+
+  if( algo == PUBKEY_ALGO_ECDSA )
+    algo = GCRY_PK_ECDSA;
+  else if( algo == PUBKEY_ALGO_ECDH )
+    algo = GCRY_PK_ECDH;
+
+  return gcry_pk_test_algo ( algo );
 }
 
 int
@@ -442,7 +461,12 @@ openpgp_pk_test_algo2( int algo, unsigned int use )
   if (algo < 0 || algo > 110)
     return gpg_error (GPG_ERR_PUBKEY_ALGO);
 
-  return gcry_pk_algo_info (algo, GCRYCTL_TEST_ALGO, NULL, &use_buf);
+  if( algo == PUBKEY_ALGO_ECDSA )
+    algo = GCRY_PK_ECDSA;
+  else if( algo == PUBKEY_ALGO_ECDH )
+    algo = GCRY_PK_ECDH;
+
+  return gcry_pk_algo_info ( algo, GCRYCTL_TEST_ALGO, NULL, &use_buf);
 }
 
 int 
@@ -457,6 +481,7 @@ openpgp_pk_algo_usage ( int algo )
                  | PUBKEY_USAGE_ENC | PUBKEY_USAGE_AUTH);
           break;
       case PUBKEY_ALGO_RSA_E:
+      case PUBKEY_ALGO_ECDH:
           use = PUBKEY_USAGE_ENC;
           break;
       case PUBKEY_ALGO_RSA_S:
@@ -472,6 +497,8 @@ openpgp_pk_algo_usage ( int algo )
       case PUBKEY_ALGO_DSA:  
           use = PUBKEY_USAGE_CERT | PUBKEY_USAGE_SIG | PUBKEY_USAGE_AUTH;
           break;
+      case PUBKEY_ALGO_ECDSA:
+          use = PUBKEY_USAGE_CERT | PUBKEY_USAGE_SIG | PUBKEY_USAGE_AUTH;
       default:
           break;
     }
@@ -1308,6 +1335,10 @@ pubkey_get_npkey( int algo )
 
   if (algo == GCRY_PK_ELG_E)
     algo = GCRY_PK_ELG;
+  else if (algo == PUBKEY_ALGO_ECDSA)
+    algo = GCRY_PK_ECDSA;
+  else if (algo == PUBKEY_ALGO_ECDH)
+    algo = GCRY_PK_ECDH;
   if (gcry_pk_algo_info( algo, GCRYCTL_GET_ALGO_NPKEY, NULL, &n))
     n = 0;
   return n;
@@ -1321,6 +1352,10 @@ pubkey_get_nskey( int algo )
 
   if (algo == GCRY_PK_ELG_E)
     algo = GCRY_PK_ELG;
+  else if (algo == PUBKEY_ALGO_ECDSA)
+    algo = GCRY_PK_ECDSA;
+  else if (algo == PUBKEY_ALGO_ECDH)
+    algo = GCRY_PK_ECDH;
   if (gcry_pk_algo_info( algo, GCRYCTL_GET_ALGO_NSKEY, NULL, &n ))
     n = 0;
   return n;
@@ -1334,6 +1369,10 @@ pubkey_get_nsig( int algo )
 
   if (algo == GCRY_PK_ELG_E)
     algo = GCRY_PK_ELG;
+  else if (algo == PUBKEY_ALGO_ECDSA)
+    algo = GCRY_PK_ECDSA;
+  else if (algo == PUBKEY_ALGO_ECDH)
+    algo = GCRY_PK_ECDH;
   if (gcry_pk_algo_info( algo, GCRYCTL_GET_ALGO_NSIGN, NULL, &n))
     n = 0;
   return n;
@@ -1347,6 +1386,10 @@ pubkey_get_nenc( int algo )
   
   if (algo == GCRY_PK_ELG_E)
     algo = GCRY_PK_ELG;
+  else if (algo == PUBKEY_ALGO_ECDSA)
+    algo = GCRY_PK_ECDSA;
+  else if (algo == PUBKEY_ALGO_ECDH)
+    algo = GCRY_PK_ECDH;
   if (gcry_pk_algo_info( algo, GCRYCTL_GET_ALGO_NENCR, NULL, &n ))
     n = 0;
   return n;
@@ -1359,6 +1402,8 @@ pubkey_nbits( int algo, gcry_mpi_t *key )
 {
     int rc, nbits;
     gcry_sexp_t sexp;
+
+    assert( algo != GCRY_PK_ECDSA && algo != GCRY_PK_ECDH );
 
     if( algo == GCRY_PK_DSA ) {
 	rc = gcry_sexp_build ( &sexp, NULL,
@@ -1374,6 +1419,11 @@ pubkey_nbits( int algo, gcry_mpi_t *key )
 	rc = gcry_sexp_build ( &sexp, NULL,
 			      "(public-key(rsa(n%m)(e%m)))",
 				  key[0], key[1] );
+    }
+    else if( algo == PUBKEY_ALGO_ECDSA || algo == PUBKEY_ALGO_ECDH ) {
+	rc = gcry_sexp_build ( &sexp, NULL,
+			      "(public-key(ecc(c%m)(q%m)))",
+				  key[0], key[1] /* not affecting the size calculation, so use 'ecc' == 'ecdsa' */ );
     }
     else
 	return 0;
@@ -1412,4 +1462,86 @@ mpi_print( FILE *fp, gcry_mpi_t a, int mode )
     }
     return n;
 }
+
+/*
+ * Write a special size+body mpi a, to OUT. The format of the content of the MPI is
+ * one byte LEN, following by LEN bytes 
+ */
+int
+iobuf_write_size_body_mpi (iobuf_t out, gcry_mpi_t a)
+{
+  byte buffer[256]; /* Fixed buffer for a public parameter, max possible */
+  size_t nbytes = (mpi_get_nbits (a)+7)/8;
+  int rc;
+
+  if( nbytes > sizeof(buffer) )  {
+      log_error("mpi with size+body is too large (%u bytes)\n", nbytes);
+      return gpg_error (GPG_ERR_TOO_LARGE);
+  }
+  
+  rc = gcry_mpi_print (GCRYMPI_FMT_USG, buffer, sizeof(buffer), &nbytes, a);
+  if( rc )  {
+    log_error("Failed to exported size+body mpi\n");
+    return rc;
+  }
+  if( buffer[0] != nbytes-1 )  {
+    log_error("Internal size mismatch in mpi size+body: %02x != %02x\n", buffer[0], nbytes-1);
+    return gpg_error (GPG_ERR_INV_DATA);
+  }
+  return iobuf_write( out, buffer, nbytes );
+}
+
+/*
+ * Read a special size+body from inp into body[body_max_size] and return it in a buffer and as MPI.
+ * On success the number of consumed bytes will body[0]+1. 
+ * The format of the content of the returned MPI is one byte LEN, following by LEN bytes.
+ * Caller is expected to pre-allocate fixed-size 255 byte buffer (or smaller when appropriate).
+ */
+int
+iobuf_read_size_body( iobuf_t inp, byte *body, int body_max_size, int pktlen, gcry_mpi_t *out )  {
+  unsigned n;
+  int rc;
+  gcry_mpi_t result;
+
+  *out = NULL;
+
+  if( (n = iobuf_readbyte(inp)) == -1 ) {
+    return G10ERR_INVALID_PACKET;
+  }
+  if( n >= body_max_size || n < 2)  {
+    log_error("invalid size+body field\n");
+    return G10ERR_INVALID_PACKET;
+  }
+  body[0] = n;	
+  if( (n = iobuf_read(inp, body+1, n)) == -1 ) {
+    log_error("invalid size+body field\n");
+    return G10ERR_INVALID_PACKET;
+  }
+  if( n+1 > pktlen )  {
+    log_error("size+body field is larger than the packet\n");
+    return G10ERR_INVALID_PACKET;
+  }
+  rc = gcry_mpi_scan (&result, GCRYMPI_FMT_USG, body, n+1, NULL);
+  if (rc)
+    log_fatal ("mpi_scan failed: %s\n", gpg_strerror (rc));
+
+  *out = result;
+
+  return rc;
+}
+
+
+/* pkey[1] or skey[1] is Q for ECDSA, which is an uncompressed point, i.e.  04 <x> <y> */
+int ecdsa_qbits_from_Q( int qbits )  {
+	if( qbits%8>3 )  {
+		log_error(_("ECDSA public key is expected to be in SEC encoding multiple of 8 bits\n"));
+		return 0;
+	}
+	qbits -= qbits%8;
+	qbits /= 2;
+	return qbits;
+}
+
+
+
 

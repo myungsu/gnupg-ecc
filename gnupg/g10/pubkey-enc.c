@@ -189,7 +189,12 @@ get_it( PKT_pubkey_enc *enc, DEK *dek, PKT_secret_key *sk, u32 *keyid )
     }
   else
     {
-      rc = pk_decrypt (sk->pubkey_algo, &plain_dek, enc->data, sk->skey );
+      byte fp[MAX_FINGERPRINT_LEN]; 
+      size_t fpn;
+      fingerprint_from_sk( sk, fp, &fpn );
+      assert( fpn == 20 );
+
+      rc = pk_decrypt (sk->pubkey_algo, &plain_dek, fp, enc->data, sk->skey );
       if( rc )
 	goto leave;
       if (gcry_mpi_aprint (GCRYMPI_FMT_USG, &frame, &nframe, plain_dek))
@@ -217,7 +222,8 @@ get_it( PKT_pubkey_enc *enc, DEK *dek, PKT_secret_key *sk, u32 *keyid )
     if (DBG_CIPHER)
       log_printhex ("DEK frame:", frame, nframe );
     n=0;
-    if (!card)
+    if( sk->pubkey_algo != PUBKEY_ALGO_ECDH )  {
+      if (!card)
       {
         if( n + 7 > nframe )
           { rc = G10ERR_WRONG_SECKEY; goto leave; }
@@ -235,6 +241,17 @@ get_it( PKT_pubkey_enc *enc, DEK *dek, PKT_secret_key *sk, u32 *keyid )
 
     if( n + 4 > nframe )
 	{ rc = G10ERR_WRONG_SECKEY; goto leave; }
+    }
+    else  {
+      /* Allow double padding for the benefit of DEK size concealment.
+       * Higher than this is wasteful.  
+       */
+      if( frame[nframe-1] > 8*2 || nframe <= 8 )  {
+        rc = G10ERR_WRONG_SECKEY; goto leave; 
+      }
+      nframe -= frame[nframe-1];	/* remove padding */
+      assert( n==0 );	/* used just bellow */
+    }
 
     dek->keylen = nframe - (n+1) - 2;
     dek->algo = frame[n++];

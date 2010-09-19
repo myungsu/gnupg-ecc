@@ -89,10 +89,12 @@ int map_cipher_openpgp_to_gcry (int algo);
 int openpgp_cipher_blocklen (int algo);
 int openpgp_cipher_test_algo( int algo );
 const char *openpgp_cipher_algo_name (int algo);
+int map_pk_openpgp_to_gcry (int algo);
 int openpgp_pk_test_algo( int algo );
 int openpgp_pk_test_algo2 ( int algo, unsigned int use );
 int openpgp_pk_algo_usage ( int algo );
 int openpgp_md_test_algo( int algo );
+const char *openpgp_pk_algo_name (int algo);
 
 #ifdef USE_IDEA
 void idea_cipher_warn( int show );
@@ -151,6 +153,10 @@ int pubkey_get_nsig( int algo );
 int pubkey_get_nenc( int algo );
 unsigned int pubkey_nbits( int algo, gcry_mpi_t *pkey );
 int mpi_print( FILE *fp, gcry_mpi_t a, int mode );
+int iobuf_write_size_body_mpi (iobuf_t out, gcry_mpi_t a);
+int iobuf_read_size_body(iobuf_t inp, byte *body, int body_max_size, int pktlen, gcry_mpi_t *out);
+
+int ecdsa_qbits_from_Q( int qbits );
 
 /*-- status.c --*/
 void set_status_fd ( int fd );
@@ -239,6 +245,8 @@ int generate_card_subkeypair (KBNODE pub_keyblock, KBNODE sec_keyblock,
                               int keyno, const char *serialno);
 int save_unprotected_key_to_card (PKT_secret_key *sk, int keyno);
 #endif
+int pk_ecc_keypair_gen( PKT_public_key **pk_out, PKT_secret_key **sk_out, 
+	int algo, int is_long_term, unsigned nbits);
 
 /*-- openfile.c --*/
 int overwrite_filep( const char *fname );
@@ -250,7 +258,7 @@ void try_make_homedir( const char *fname );
 
 /*-- seskey.c --*/
 void make_session_key( DEK *dek );
-gcry_mpi_t encode_session_key( DEK *dek, unsigned nbits );
+gcry_mpi_t encode_session_key( int openpgp_pk_algo, DEK *dek, unsigned nbits );
 gcry_mpi_t encode_md_value( PKT_public_key *pk, PKT_secret_key *sk,
                             gcry_md_hd_t md, int hash_algo );
 

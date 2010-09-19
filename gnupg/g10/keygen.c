@@ -42,6 +42,8 @@
 #include "i18n.h"
 #include "keyserver-internal.h"
 #include "call-agent.h"
+#include "pkglue.h"
+#include "gcrypt.h"
 
 /* The default algorithms.  If you change them remember to change them
    also in gpg.c:gpgconf_list.  You should also check that the value
@@ -1415,6 +1417,170 @@ gen_dsa (unsigned int nbits, KBNODE pub_root, KBNODE sec_root, DEK *dek,
   return 0;
 }
 
+/* Returns allocated ECC key generation S-explression 
+   call gcry_sexp_release ( out ) to free it.
+ */
+static int 
+pk_ecc_build_sexp( int qbits, int algo, int is_long_term, gcry_sexp_t *out )  {
+  gcry_mpi_t kek_params;
+  int rc;
+
+  if( is_long_term && algo == PUBKEY_ALGO_ECDH )
+    kek_params = pk_ecdh_default_params_to_mpi( qbits );
+  else
+    kek_params = mpi_new(0);
+
+  rc = gcry_sexp_build (out, NULL,
+			algo == PUBKEY_ALGO_ECDSA ? 
+                        "(genkey(ecdsa(nbits %d)(qbits %d)))" : 
+                        "(genkey(ecdh(nbits %d)(qbits %d)(ephemeral %d)(kek-params %m)))",
+                        (int)qbits, (int)qbits, (int)(is_long_term==0), kek_params);
+  mpi_release( kek_params );
+  if (rc)  {
+    log_debug("ec gen gcry_sexp_build failed: %s\n", gpg_strerror (rc));
+    return rc;
+  }
+  return 0;
+}
+
+/* This common function is used in this file and also to generate ephemeral keys for ECDH.
+ * Caller must call free_public_key and free_secret_key */
+int
+pk_ecc_keypair_gen( PKT_public_key **pk_out, PKT_secret_key **sk_out, int algo, int is_long_term, unsigned nbits)  {
+  int rc;
+  PKT_secret_key *sk;
+  PKT_public_key *pk;
+  gcry_sexp_t s_parms, s_key;
+  unsigned int qbits;
+  // PUBKEY_ALGO_ECDH, PUBKEY_ALGO_ECDSA
+  static const char * const ec_pub_params[2] =  { "cqp",  "cq" };
+  static const char * const ec_priv_params[2] = { "cqpd", "cqd" };
+
+  assert( algo == PUBKEY_ALGO_ECDSA || algo == PUBKEY_ALGO_ECDH );
+  assert( PUBKEY_ALGO_ECDSA == PUBKEY_ALGO_ECDH + 1 );
+
+  *sk_out = NULL;
+  *pk_out = NULL;
+
+  if( pubkey_get_npkey (PUBKEY_ALGO_ECDSA) != 2 || pubkey_get_nskey (PUBKEY_ALGO_ECDSA) != 3 ||
+      pubkey_get_npkey (PUBKEY_ALGO_ECDH)  != 3 || pubkey_get_nskey (PUBKEY_ALGO_ECDH)  != 4 )  
+  {
+    log_info(_("incompatible version of gcrypt library (expect named curve logic for ECC)\n") );
+    return GPG_ERR_EPROGMISMATCH;
+  }
+
+  if ( nbits != 256 && nbits != 384 && nbits != 521 ) 
+    {
+      log_info(_("keysize invalid; using 256 bits instead of passed in %d\n"), nbits );
+    }
+
+  /*
+    Figure out a q size based on the key size. See gen_dsa for more details.
+    Due to 8-bit rounding we may get 528 here instead of 521
+  */
+  nbits = qbits = (nbits < 521 ? nbits : 521 );
+
+  rc = pk_ecc_build_sexp( qbits, algo, is_long_term, &s_parms );
+  if( !rc ) rc = gcry_pk_genkey (&s_key, s_parms);
+  gcry_sexp_release (s_parms);
+  if (rc)
+    {
+      log_error ("ec gcry_pk_genkey failed: %s\n", gpg_strerror (rc) );
+      return rc;
+    }
+
+  sk = xmalloc_clear( sizeof *sk );
+  pk = xmalloc_clear( sizeof *pk );
+  sk->version = pk->version = 4;
+  sk->pubkey_algo = pk->pubkey_algo = algo;
+
+  rc = key_from_sexp (pk->pkey, s_key, "public-key", ec_pub_params[algo-PUBKEY_ALGO_ECDH] );
+  if (rc) 
+    {
+      log_error ("ec key_from_sexp public-key failed: %s\n", gpg_strerror (rc));
+      gcry_sexp_release (s_key);
+      free_public_key(pk);
+      free_secret_key(sk);
+      return rc;
+    }
+  rc = key_from_sexp (sk->skey, s_key, "private-key", ec_priv_params[algo-PUBKEY_ALGO_ECDH]);
+  gcry_sexp_release (s_key);
+  if (rc) 
+    {
+      log_error ("ec key_from_sexp private-key failed: %s\n", gpg_strerror (rc) );
+      free_public_key(pk);
+      free_secret_key(sk);
+      return rc;
+    }
+  
+  sk->is_protected = 0;
+  sk->protect.algo = 0;
+
+  *sk_out = sk;
+  *pk_out = pk;
+
+  return 0;
+}
+
+
+/****************
+ * Generate an ECC OpenPGP key
+ */
+static int
+gen_ecc (int algo, unsigned int nbits, KBNODE pub_root, KBNODE sec_root, DEK *dek,
+         STRING2KEY *s2k, PKT_secret_key **ret_sk, 
+         u32 timestamp, u32 expireval, int is_subkey)
+{
+  int rc;
+  PACKET *pkt;
+  PKT_secret_key *sk;
+  PKT_public_key *pk;
+
+  rc = pk_ecc_keypair_gen( &pk, &sk, algo, 1, nbits );
+  if( rc )
+    return rc;
+
+  sk->timestamp = pk->timestamp = timestamp;
+  if (expireval) 
+    sk->expiredate = pk->expiredate = sk->timestamp + expireval;
+
+  sk->is_protected = 0;
+  sk->protect.algo = 0;
+
+  sk->csum = checksum_mpi ( sk->skey[algo==PUBKEY_ALGO_ECDSA ? 2 : 3] );	/* corresponds to 'd' in 'cqd' or 'cqpd' */
+  if( ret_sk ) /* return an unprotected version of the sk */
+    *ret_sk = copy_secret_key( NULL, sk );
+
+  rc = genhelp_protect (dek, s2k, sk);
+  if (rc)
+    {
+      free_public_key (pk);
+      free_secret_key (sk);
+      return rc;
+    }
+
+  pkt = xmalloc_clear(sizeof *pkt);
+  pkt->pkttype = is_subkey ? PKT_PUBLIC_SUBKEY : PKT_PUBLIC_KEY;
+  pkt->pkt.public_key = pk;
+  add_kbnode(pub_root, new_kbnode( pkt ));
+
+  /* Don't know whether it makes sense to have the factors, so for now
+   * we store them in the secret keyring (but they are not secret)
+   * p = 2 * q * f1 * f2 * ... * fn
+   * We store only f1 to f_n-1;  fn can be calculated because p and q
+   * are known.
+   */
+  pkt = xmalloc_clear(sizeof *pkt);
+  pkt->pkttype = is_subkey ? PKT_SECRET_SUBKEY : PKT_SECRET_KEY;
+  pkt->pkt.secret_key = sk;
+  add_kbnode(sec_root, new_kbnode( pkt ));
+
+  return 0;
+}
+
+
+
+
 
 /* 
  * Generate an RSA key.
@@ -1704,6 +1870,8 @@ ask_algo (int addmode, int *r_subkey_algo, unsigned int *r_usage)
       tty_printf (_("   (%d) RSA (set your own capabilities)\n"), 8 );
     }
   
+  tty_printf (_("   (%d) ECDSA and ECDH\n"), 9 );
+  
   for(;;)
     {
       *r_usage = 0;
@@ -1760,6 +1928,12 @@ ask_algo (int addmode, int *r_subkey_algo, unsigned int *r_usage)
           *r_usage = ask_key_flags (algo, addmode);
           break;
 	}
+      else if (algo == 9)
+        {
+          algo = PUBKEY_ALGO_ECDSA;
+          *r_subkey_algo = PUBKEY_ALGO_ECDH;
+          break;
+	}
       else
         tty_printf (_("Invalid selection.\n"));
     }
@@ -1804,13 +1978,20 @@ ask_keysize (int algo, unsigned int primary_keysize)
       max=3072;
       break;
 
+    case PUBKEY_ALGO_ECDSA:
+    case PUBKEY_ALGO_ECDH:
+      min=256;
+      def=256;
+      max=521;
+      break;
+
     case PUBKEY_ALGO_RSA:
       min=1024;
       break;
     }
 
   tty_printf(_("%s keys may be between %u and %u bits long.\n"),
-	     gcry_pk_algo_name (algo), min, max);
+	     openpgp_pk_algo_name (algo), min, max);
 
   for(;;)
     {
@@ -1829,7 +2010,7 @@ ask_keysize (int algo, unsigned int primary_keysize)
       
       if(nbits<min || nbits>max)
 	tty_printf(_("%s keysizes must be in the range %u-%u\n"),
-		   gcry_pk_algo_name (algo), min, max);
+		   openpgp_pk_algo_name (algo), min, max);
       else
 	break;
     }
@@ -1839,10 +2020,18 @@ ask_keysize (int algo, unsigned int primary_keysize)
  leave:
   if( algo == PUBKEY_ALGO_DSA && (nbits % 64) )
     {
-      nbits = ((nbits + 63) / 64) * 64;
-      if (!autocomp)
-        tty_printf(_("rounded up to %u bits\n"), nbits );
+      if( !(algo == PUBKEY_ALGO_ECDSA && nbits==521) )  {
+        nbits = ((nbits + 63) / 64) * 64;
+        if (!autocomp)
+          tty_printf(_("rounded up to %u bits\n"), nbits );
+      }
     }
+  else if( algo == PUBKEY_ALGO_ECDH || algo == PUBKEY_ALGO_ECDSA )  {
+     if( nbits != 256 && nbits != 384 && nbits != 521 )  {
+        nbits = min;
+        tty_printf(_("unsupported ECDH value, corrected to the minimum %u bits\n"), nbits );
+     }
+  }
   else if( (nbits % 32) )
     {
       nbits = ((nbits + 31) / 32) * 32;
@@ -2329,6 +2518,9 @@ do_create (int algo, unsigned int nbits, KBNODE pub_root, KBNODE sec_root,
                  timestamp, expiredate, is_subkey);
   else if( algo == PUBKEY_ALGO_DSA )
     rc = gen_dsa(nbits, pub_root, sec_root, dek, s2k, sk,
+                 timestamp, expiredate, is_subkey);
+  else if( algo == PUBKEY_ALGO_ECDSA || algo == PUBKEY_ALGO_ECDH )
+    rc = gen_ecc(algo, nbits, pub_root, sec_root, dek, s2k, sk,
                  timestamp, expiredate, is_subkey);
   else if( algo == PUBKEY_ALGO_RSA )
     rc = gen_rsa(algo, nbits, pub_root, sec_root, dek, s2k, sk,
