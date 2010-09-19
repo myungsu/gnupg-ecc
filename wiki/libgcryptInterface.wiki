@@ -1,8 +1,6 @@
 ﻿#summary libgcrypt interface
 #labels Phase-Deploy,Featured
 
-#sidebar TableOfContents
-
 = Introduction =
 
 This document gives an overview of the interface between libgcrypt and gnupg. These are the modules that are distributed as separate binaries (such as RPMs in Fedora Code) by UNIX distributors, thus there is desire to maintain stable binary interface between the libgcrypt and gnupg. libgcrypt was separated from the gnupg in the 2.0 release.
@@ -24,8 +22,8 @@ Every field in the interface between gnupg and libgcyrpt is encoded as an MPI, e
 
 OpenPGP ECC draft makes extensive use of the following method to encode a sequence of octets. When N octets that are not MPIs are written into any stream, they are written as N+1 octets with the first octet having the value N. For example, the OID sequence {{{2B 81 04 00 22}}}, representing ASN.1 value of the curve P-384, is encoded as
 
-   || Data: || || {{{ 2B 81 04 00 22}}} ||
-   || Encoded value: || *{{{05}}}* || {{{ 2B 81 04 00 22}}} ||
+|| Data:          ||            || {{{ 2B 81 04 00 22}}} ||
+|| Encoded value: || *{{{05}}}* || {{{ 2B 81 04 00 22}}} ||
 
 The same representation is used internally in this project. In some cases this representation is further encoded into an MPI for the sake of uniformity of interface. For the most part libgcrypt is not aware of this representation (only gnupg layer is), except when it needs to determine the ECC curve OID. To put it differently, MPI is the internal format of the data container in this project.
 
@@ -41,7 +39,8 @@ The definitions are summarised in the following table, each explained in details
 || ECDSA public || "cq" || 
 || ECDSA private || "cqd" || 
 || ECDH public || "cqp" || 
-|| ECDH private || "cqpd" || 
+|| ECDH private || "cqpd" ||
+
 
 === ECC public key header ===
 
@@ -60,7 +59,6 @@ Identical to the ECC public key header (2 fields)
 || *Field index* || *Field name* || *Description* ||
 || _ECC public key header, 2 fields_ ||
 || 2 || p || KEK parameters, currently 4 bytes ||
-
 
 === ECC private keys ===
 
@@ -90,14 +88,14 @@ Fortunately, there is a good solution that this project employs. These issues ar
 
 Input to encryption operation:
 
-   || *Field name* || *Description* ||
-   || data || ECC scalar ||
-   || _ECDH public key portion, 3 fields_  ||
+|| *Field name* || *Description* ||
+|| data || ECC scalar ||
+|| _ECDH public key portion, 3 fields_  ||
 
 Output from the encryption operation:
 
-   || result [0] || {{{ECC curve point = data * q}}} ||
-   || result [1] || always set to 0 ||
+|| result 0 || {{{ECC curve point = data * q}}} ||
+|| result 1 || always set to 0 ||
 
 The ECDH encryption is used with the long-term ECDH public key as well as with ephemeral public keys. Because of the symmetry of DH operations, the decryption routine of libgcrypt is not called by gnupg layer.
 
@@ -105,17 +103,15 @@ The ECDH encryption is used with the long-term ECDH public key as well as with e
 
 === ECDSA and ECDH key generation ===
 
-   || *Field name* || *Possible values* || *Description* ||
-   || qbits || 256, 384, 521 || Curve size in bits ||
-   || nbits || 256, 384, 521|| always equals to qbits ||
+|| *Field name* || *Possible values* || *Description* ||
+|| qbits || 256, 384, 521 || Curve size in bits ||
+|| nbits || 256, 384, 521|| always equals to qbits ||
 
 
 The qbits determines which default curve will be used. The choice of the curve will be made according to the [http://sites.google.com/site/brainhub/pgp ECC in OpenPGP].
 
 === Additional parameters for ECDH key generation ===
 
-   || *Field name* || *Possible values* || *Description* ||
-   || ephemeral || 0 - a key needed for each encrypted message, 1 - long-term key || mostly a performance-optimization parameter ||
-   || kek-params || 4 octets || KEK parameters ||
-
-
+|| *Field name* || *Possible values* || *Description* ||
+|| ephemeral || 0 - a key needed for each encrypted message, 1 - long-term key || mostly a performance-optimization parameter ||
+|| kek-params || 4 octets || KEK parameters ||
