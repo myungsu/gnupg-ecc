@@ -102,74 +102,74 @@ Finally, let's save the keyring (don't forget to copy it back). For demonstratio
 The following single invocation with a few standard answers generates an ECC key:
 
 {{{
-		[user@host ~]$ gpg2ecc  --gen-key
-		gpg (GnuPG) 2.1.0; Copyright (C) 2009 Free Software Foundation, Inc.
-		This is free software: you are free to change and redistribute it.
-		There is NO WARRANTY, to the extent permitted by law.
+	[user@host ~]$ gpg2ecc  --gen-key
+	gpg (GnuPG) 2.1.0; Copyright (C) 2009 Free Software Foundation, Inc.
+	This is free software: you are free to change and redistribute it.
+	There is NO WARRANTY, to the extent permitted by law.
 
-		Please select what kind of key you want:
-		   (1) RSA and RSA (default)
-		   (2) DSA and Elgamal
-		   (3) DSA (sign only)
-		   (4) RSA (sign only)
-		   (9) ECDSA and ECDH
-		Your selection? 9
-		ECDSA keys may be between 256 and 521 bits long.
-		What keysize do you want? (256) 
-		Requested keysize is 256 bits
-		Please specify how long the key should be valid.
-				 0 = key does not expire
-			  <n>  = key expires in n days
-			  <n>w = key expires in n weeks
-			  <n>m = key expires in n months
-			  <n>y = key expires in n years
-		Key is valid for? (0) 
-		Key does not expire at all
-		Is this correct? (y/N) y
+	Please select what kind of key you want:
+	   (1) RSA and RSA (default)
+	   (2) DSA and Elgamal
+	   (3) DSA (sign only)
+	   (4) RSA (sign only)
+	   (9) ECDSA and ECDH
+	Your selection? 9
+	ECDSA keys may be between 256 and 521 bits long.
+	What keysize do you want? (256) 
+	Requested keysize is 256 bits
+	Please specify how long the key should be valid.
+			 0 = key does not expire
+		  <n>  = key expires in n days
+		  <n>w = key expires in n weeks
+		  <n>m = key expires in n months
+		  <n>y = key expires in n years
+	Key is valid for? (0) 
+	Key does not expire at all
+	Is this correct? (y/N) y
 
-		GnuPG needs to construct a user ID to identify your key.
+	GnuPG needs to construct a user ID to identify your key.
 
-		Real name: ECC Test
-		Email address: ecc_test@domail.com
-		Comment: 
-		You selected this USER-ID:
-			"ECC Test <ecc_test@domail.com>"
+	Real name: ECC Test
+	Email address: ecc_test@domail.com
+	Comment: 
+	You selected this USER-ID:
+		"ECC Test <ecc_test@domail.com>"
 
-		Change (N)ame, (C)omment, (E)mail or (O)kay/(Q)uit? o
-		You need a Passphrase to protect your secret key.
-		<The PIN entry dialog pops up, set a passphrase there>
+	Change (N)ame, (C)omment, (E)mail or (O)kay/(Q)uit? o
+	You need a Passphrase to protect your secret key.
+	<The PIN entry dialog pops up, set a passphrase there>
 
-		We need to generate a lot of random bytes. It is a good idea to perform
-		some other action (type on the keyboard, move the mouse, utilize the
-		disks) during the prime generation; this gives the random number
-		generator a better chance to gain enough entropy.
-		We need to generate a lot of random bytes. It is a good idea to perform
-		some other action (type on the keyboard, move the mouse, utilize the
-		disks) during the prime generation; this gives the random number
-		generator a better chance to gain enough entropy.
-		gpg: key F72753B5 marked as ultimately trusted
-		public and secret key created and signed.
+	We need to generate a lot of random bytes. It is a good idea to perform
+	some other action (type on the keyboard, move the mouse, utilize the
+	disks) during the prime generation; this gives the random number
+	generator a better chance to gain enough entropy.
+	We need to generate a lot of random bytes. It is a good idea to perform
+	some other action (type on the keyboard, move the mouse, utilize the
+	disks) during the prime generation; this gives the random number
+	generator a better chance to gain enough entropy.
+	gpg: key F72753B5 marked as ultimately trusted
+	public and secret key created and signed.
 
-		gpg: checking the trustdb
-		gpg: public key of ultimately trusted key 3188175A not found
-		gpg: public key of ultimately trusted key A4276C3A not found
-		gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model
-		gpg: depth: 0  valid:   3  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 3u
-		pub    256E/F72753B5 2010-10-15
-			  Key fingerprint = 4614 A0AF 9450 BF51 AE9F  BB5C F126 22B6 F727 53B5
-		uid                  ECC Test <ecc_test@domail.com>
-		sub    256e/0D063282 2010-10-15
+	gpg: checking the trustdb
+	gpg: public key of ultimately trusted key 3188175A not found
+	gpg: public key of ultimately trusted key A4276C3A not found
+	gpg: 3 marginal(s) needed, 1 complete(s) needed, PGP trust model
+	gpg: depth: 0  valid:   3  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 3u
+	pub    256E/F72753B5 2010-10-15
+		  Key fingerprint = 4614 A0AF 9450 BF51 AE9F  BB5C F126 22B6 F727 53B5
+	uid                  ECC Test <ecc_test@domail.com>
+	sub    256e/0D063282 2010-10-15
 }}}
 
 This is the new key looks:
 
 {{{
-		[user@host ~]$ gpg2ecc --list-keys
-		/encr/home/.gnupg/pubring.gpg
-		-------------------------------
-		pub    256E/F72753B5 2010-10-15
-		uid                  ECC Test <ecc_test@domail.com>
-		sub    256e/0D063282 2010-10-15
+	[user@host ~]$ gpg2ecc --list-keys
+	/encr/home/.gnupg/pubring.gpg
+	-------------------------------
+	pub    256E/F72753B5 2010-10-15
+	uid                  ECC Test <ecc_test@domail.com>
+	sub    256e/0D063282 2010-10-15
 }}}
 
 = Usage =
@@ -179,45 +179,45 @@ The rest of the document shows how this key can be used. Note that the behaviour
 == Message signing ==
 
 {{{
-		[user@host ~]$ echo "Message" > _
-		[user@host ~]$ gpg2ecc --sign -a _
+	[user@host ~]$ echo "Message" > _
+	[user@host ~]$ gpg2ecc --sign -a _
 
-		You need a passphrase to unlock the secret key for
-		user: "ECC Test <ecc_test@domail.com>"
-		256-bit ECDSA key, ID F72753B5, created 2010-10-15
-		<The PIN entry dialog pops up, enter the passphrase there>
+	You need a passphrase to unlock the secret key for
+	user: "ECC Test <ecc_test@domail.com>"
+	256-bit ECDSA key, ID F72753B5, created 2010-10-15
+	<The PIN entry dialog pops up, enter the passphrase there>
 }}}
 
 == Message verification ==
 
 {{{
-		[usery@host ~]$ gpg2ecc _.asc 
-		File `_' exists. Overwrite? (y/N) n
-		Enter new filename: __
-		gpg: Signature made Thu 14 Oct 2010 05:12:34 PM PDT using ECDSA key ID F72753B5
-		gpg: Good signature from "ECC Test <ecc_test@domail.com>"
+	[usery@host ~]$ gpg2ecc _.asc 
+	File `_' exists. Overwrite? (y/N) n
+	Enter new filename: __
+	gpg: Signature made Thu 14 Oct 2010 05:12:34 PM PDT using ECDSA key ID F72753B5
+	gpg: Good signature from "ECC Test <ecc_test@domail.com>"
 }}}
 
 == Message encryption ==
 
 {{{
-	gpg2ecc --encrypt -r Test -a  -o _e.asc _
+	[user@host ~] gpg2ecc --encrypt -r Test -a  -o _e.asc _
 }}}
 
 == Message decryption ==
 
 {{{
-		[user@host ~]$ gpg2ecc _e.asc 
+	[user@host ~]$ gpg2ecc _e.asc 
 
-		You need a passphrase to unlock the secret key for
-		user: "ECC Test <ecc_test@domail.com>"
-		256-bit ECDH key, ID 0D063282, created 2010-10-15 (main key ID F72753B5)
-		<The PIN entry dialog pops up, enter the passphrase there>
+	You need a passphrase to unlock the secret key for
+	user: "ECC Test <ecc_test@domail.com>"
+	256-bit ECDH key, ID 0D063282, created 2010-10-15 (main key ID F72753B5)
+	<The PIN entry dialog pops up, enter the passphrase there>
 
-		gpg: encrypted with 256-bit ECDH key, ID 0D063282, created 2010-10-15
-			  "ECC Test <ecc_test@domail.com>"
+	gpg: encrypted with 256-bit ECDH key, ID 0D063282, created 2010-10-15
+		  "ECC Test <ecc_test@domail.com>"
 
-		[user@host ~]$ diff _e _ && echo OK
-		OK
+	[user@host ~]$ diff _e _ && echo OK
+	OK
 }}}
 
