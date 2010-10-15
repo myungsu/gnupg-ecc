@@ -7,94 +7,94 @@ This document is a walkthrough for the steps needed to encrypt a message with a 
 
 = Setup = 
 
-Click [http://code.google.com/p/gnupg-ecc/downloads/list Downloads] tab on the [http://code.google.com/p/gnupg-ecc/ gnupg-ecc project] and download a suitable binary for your platform. This document will be using gpg2ecc-2.1.0-r17.x86_64.tar.bz2 as an example.
+Click [http://code.google.com/p/gnupg-ecc/downloads/list Downloads] tab on the [http://code.google.com/p/gnupg-ecc/ gnupg-ecc project] and download a suitable binary for your platform. This document will be using {{{gpg2ecc-2.1.0-r17.x86_64.tar.bz2}}} as an example.
 
 {{{
     # Download the file into /tmp/_
-    wget http://gnupg-ecc.googlecode.com/files/gpg2ecc-2.1.0-r17.x86_64.tar.bz2 -O /tmp/_
+    [user@host ~]$ wget http://gnupg-ecc.googlecode.com/files/gpg2ecc-2.1.0-r17.x86_64.tar.bz2 -O /tmp/_
 }}}
 
 Check that file is downloaded properly:
 
 {{{
-   sha1sum /tmp/_
+   [user@host ~]$ sha1sum /tmp/_
    # compare the SHA-1 sum with the one listed on the download page 
 }}}
 
 Check the content of the file:
 
 {{{
-   tar -jtvf /tmp/_
-   # drwxr-xr-x root/root         0 2010-09-18 18:40 gpg2ecc-2.1.0-r17.x86_64/
-   # drwxr-xr-x root/root         0 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/lib/
-   # -rw-r--r-- root/root   2707526 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/lib/libgcrypt.a
-   # lrwxrwxrwx root/root         0 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libgpg-error.so.0 -> libgpg-error.so.0.7.0
-   # lrwxrwxrwx root/root         0 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libgpg-error.so -> libgpg-error.so.0.7.0
-   # -rwxr-xr-x root/root       971 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libgpg-error.la
-   # lrwxrwxrwx root/root         0 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/lib/libgcrypt.so -> libgcrypt.so.11.6.0
-   # -rwxr-xr-x root/root       990 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libassuan.la
-   # -rwxr-xr-x root/root     44169 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libgpg-error.so.0.7.0
-   # -rwxr-xr-x root/root    347756 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libassuan.so.0.1.0
-   # lrwxrwxrwx root/root         0 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libassuan.so -> libassuan.so.0.1.0
-   # lrwxrwxrwx root/root         0 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libassuan.so.0 -> libassuan.so.0.1.0
-   # -rwxr-xr-x root/root       871 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/lib/libgcrypt.la
-   # lrwxrwxrwx root/root         0 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/lib/libgcrypt.so.11 -> libgcrypt.so.11.6.0
-   # -rwxr-xr-x root/root   1275750 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/lib/libgcrypt.so.11.6.0
-   # drwxr-xr-x root/root         0 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/
-   # -rwxr-xr-x root/root   1048940 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpgsm
-   # -rwxr-xr-x root/root    318567 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/kbxutil
-   # -rwxr-xr-x root/root     21524 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/bin/dumpsexp
-   # -rwxr-xr-x root/root      1825 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/bin/gpg-error-config
-   # -rwxr-xr-x root/root    715155 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpg-agent
-   # -rwxr-xr-x root/root   1022429 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpgv2
-   # -rwxr-xr-x root/root     49740 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/bin/gpg-error
-   # -rwxr-xr-x root/root      2387 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/bin/libassuan-config
-   # -rwxr-xr-x root/root      3756 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/bin/libgcrypt-config
-   # -rwxr-xr-x root/root    731858 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/scdaemon
-   # -rwxr-xr-x root/root      4635 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpgsm-gencert.sh
-   # -rwxr-xr-x root/root     21115 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/watchgnupg
-   # -rwxr-xr-x root/root   2005247 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpg2
-   # -rwxr-xr-x root/root    108338 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpgkey2ssh
-   # -rwxr-xr-x root/root     23508 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/bin/hmac256
-   # -rwxr-xr-x root/root     47222 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpgparsemail
-   # -rwxr-xr-x root/root    382513 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpg-connect-agent
-   # -rwxr-xr-x root/root    321142 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpgconf
+   [user@host ~]$ tar -jtvf /tmp/_
+   drwxr-xr-x root/root         0 2010-09-18 18:40 gpg2ecc-2.1.0-r17.x86_64/
+   drwxr-xr-x root/root         0 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/lib/
+   -rw-r--r-- root/root   2707526 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/lib/libgcrypt.a
+   lrwxrwxrwx root/root         0 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libgpg-error.so.0 -> libgpg-error.so.0.7.0
+   lrwxrwxrwx root/root         0 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libgpg-error.so -> libgpg-error.so.0.7.0
+   -rwxr-xr-x root/root       971 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libgpg-error.la
+   lrwxrwxrwx root/root         0 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/lib/libgcrypt.so -> libgcrypt.so.11.6.0
+   -rwxr-xr-x root/root       990 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libassuan.la
+   -rwxr-xr-x root/root     44169 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libgpg-error.so.0.7.0
+   -rwxr-xr-x root/root    347756 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libassuan.so.0.1.0
+   lrwxrwxrwx root/root         0 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libassuan.so -> libassuan.so.0.1.0
+   lrwxrwxrwx root/root         0 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/lib/libassuan.so.0 -> libassuan.so.0.1.0
+   -rwxr-xr-x root/root       871 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/lib/libgcrypt.la
+   lrwxrwxrwx root/root         0 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/lib/libgcrypt.so.11 -> libgcrypt.so.11.6.0
+   -rwxr-xr-x root/root   1275750 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/lib/libgcrypt.so.11.6.0
+   drwxr-xr-x root/root         0 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/
+   -rwxr-xr-x root/root   1048940 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpgsm
+   -rwxr-xr-x root/root    318567 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/kbxutil
+   -rwxr-xr-x root/root     21524 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/bin/dumpsexp
+   -rwxr-xr-x root/root      1825 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/bin/gpg-error-config
+   -rwxr-xr-x root/root    715155 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpg-agent
+   -rwxr-xr-x root/root   1022429 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpgv2
+   -rwxr-xr-x root/root     49740 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/bin/gpg-error
+   -rwxr-xr-x root/root      2387 2010-09-18 18:38 gpg2ecc-2.1.0-r17.x86_64/bin/libassuan-config
+   -rwxr-xr-x root/root      3756 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/bin/libgcrypt-config
+   -rwxr-xr-x root/root    731858 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/scdaemon
+   -rwxr-xr-x root/root      4635 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpgsm-gencert.sh
+   -rwxr-xr-x root/root     21115 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/watchgnupg
+   -rwxr-xr-x root/root   2005247 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpg2
+   -rwxr-xr-x root/root    108338 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpgkey2ssh
+   -rwxr-xr-x root/root     23508 2010-09-18 18:39 gpg2ecc-2.1.0-r17.x86_64/bin/hmac256
+   -rwxr-xr-x root/root     47222 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpgparsemail
+   -rwxr-xr-x root/root    382513 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpg-connect-agent
+   -rwxr-xr-x root/root    321142 2010-09-18 18:46 gpg2ecc-2.1.0-r17.x86_64/bin/gpgconf
    ...
 }}}
 
 Place it into /usr/local/gpg2ecc and "wire it up":
 
 {{{
-   tar -jxvf /tmp/_
-   su
+   [user@host ~]$ tar -jxvf /tmp/_
+   [user@host ~]$ su
    # the location /usr/local/gpg2ecc is required
-   mv -Rvp gpg2ecc-2.1.0-r17.x86_64 /usr/local/gpg2ecc
-   export LD_LIBRARY_PATH=/usr/local/gpg2ecc/lib/
+   [user@host ~]$ mv -Rvp gpg2ecc-2.1.0-r17.x86_64 /usr/local/gpg2ecc
+   [user@host ~]$ export LD_LIBRARY_PATH=/usr/local/gpg2ecc/lib/
    
    # we will be re-using existing pinentry
-   ln -s /usr/bin/pinentry /usr/local/gpg2ecc/bin/pinentry
+   [user@host ~]$ ln -s /usr/bin/pinentry /usr/local/gpg2ecc/bin/pinentry
 
-   export LD_LIBRARY_PATH=/usr/local/gpg2ecc/lib/
+   [user@host ~]$ export LD_LIBRARY_PATH=/usr/local/gpg2ecc/lib/
 }}}
 
 For convenience let's set the shortcut
 
 {{{
-   ln /usr/local/gpg2ecc/bin/gpg2 /usr/local/bin/gpg2ecc
-   exit
+   [user@host ~]$ ln /usr/local/gpg2ecc/bin/gpg2 /usr/local/bin/gpg2ecc
+   [user@host ~]$ exit
 }}}
 
 Now you should see ECC options:
 {{{
-   gpg2ecc --version | grep Pub
-   # Pubkey: RSA, ELG, DSA, ECDH, ECDSA
+   [user@host ~]$ gpg2ecc --version | grep Pub
+   Pubkey: RSA, ELG, DSA, ECDH, ECDSA
 }}}
 
 Finally, let's save the keyring (don't forget to copy it back). For demonstration purpose this effectively hides your current keys from gnupg. Altertnatively, you can simpy use 'cp', because new ECC keys co-exist perfectly with your current keys.
 
 {{{
-   mv -vb ~/.gnupg/pubring.gpg ~/.gnupg/pubring_saved.gpg
-   mv -vb ~/.gnupg/secring.gpg ~/.gnupg/secring_saved.gpg
+   [user@host ~]$ mv -vb ~/.gnupg/pubring.gpg ~/.gnupg/pubring_saved.gpg
+   [user@host ~]$ mv -vb ~/.gnupg/secring.gpg ~/.gnupg/secring_saved.gpg
 }}}
 
 = Key generation =
@@ -172,11 +172,11 @@ This is the new key looks:
 		sub    256e/0D063282 2010-10-15
 }}}
 
-== Usage ==
+= Usage =
 
 The rest of the document shows how this key can be used. Note that the behaviour is identical as if you have generated an RSA key above. 
 
-= Message signing = 
+== Message signing ==
 
 {{{
 		[user@host ~]$ echo "Message" > _
@@ -188,7 +188,7 @@ The rest of the document shows how this key can be used. Note that the behaviour
 		<The PIN entry dialog pops up, enter the passphrase there>
 }}}
 
-= Message verification =
+== Message verification ==
 
 {{{
 		[usery@host ~]$ gpg2ecc _.asc 
@@ -198,13 +198,13 @@ The rest of the document shows how this key can be used. Note that the behaviour
 		gpg: Good signature from "ECC Test <ecc_test@domail.com>"
 }}}
 
-= Message encryption = 
+== Message encryption ==
 
 {{{
 	gpg2ecc --encrypt -r Test -a  -o _e.asc _
 }}}
 
-= Message decryption =
+== Message decryption ==
 
 {{{
 		[user@host ~]$ gpg2ecc _e.asc 
