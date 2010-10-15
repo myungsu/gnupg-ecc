@@ -62,7 +62,7 @@ Check the content of the file:
    ...
 }}}
 
-Place it into /usr/local/gpg2ecc and "wire it up":
+Place it into /usr/local/gpg2ecc and set up the environment:
 
 {{{
    [user@host ~]$ tar -jxvf /tmp/_
@@ -73,24 +73,22 @@ Place it into /usr/local/gpg2ecc and "wire it up":
    
    # we will be re-using existing pinentry
    [user@host ~]$ ln -s /usr/bin/pinentry /usr/local/gpg2ecc/bin/pinentry
-
-   [user@host ~]$ export LD_LIBRARY_PATH=/usr/local/gpg2ecc/lib/
 }}}
 
-For convenience let's set the shortcut
+For convenience let's set the shortcut, so that our version of gpg2 is invoked as gpg2ecc:
 
 {{{
    [user@host ~]$ ln /usr/local/gpg2ecc/bin/gpg2 /usr/local/bin/gpg2ecc
    [user@host ~]$ exit
 }}}
 
-Now you should see ECC options:
+You should now see ECC options:
 {{{
    [user@host ~]$ gpg2ecc --version | grep Pub
    Pubkey: RSA, ELG, DSA, ECDH, ECDSA
 }}}
 
-Finally, let's save the keyring (don't forget to copy it back). For demonstration purpose this effectively hides your current keys from gnupg. Altertnatively, you can simpy use 'cp', because new ECC keys co-exist perfectly with your current keys.
+Before we generate new key, let's save the current keyring (don't forget to copy it back). For demonstration purpose we effectively hide current keys from gnupg. Altertnatively, we can simpy use {{{cp}}} bellow, because new ECC keys co-exist perfectly with present public keys, like RSA keys.
 
 {{{
    [user@host ~]$ mv -vb ~/.gnupg/pubring.gpg ~/.gnupg/pubring_saved.gpg
@@ -99,7 +97,7 @@ Finally, let's save the keyring (don't forget to copy it back). For demonstratio
 
 = Key generation =
 
-The following single invocation with a few standard answers generates an ECC key:
+The following single invocation, plus all the default answers except user ID, generates an ECC key:
 
 {{{
 	[user@host ~]$ gpg2ecc  --gen-key
@@ -161,7 +159,10 @@ The following single invocation with a few standard answers generates an ECC key
 	sub    256e/0D063282 2010-10-15
 }}}
 
-This is the new key looks:
+This is how does the new key look. The only difference with other keys here that you may notice is smaller bit size and that ECC keys are marked with 
+
+|| E || ECC signing key/subkey ||
+|| e || ECC encryption subkey  ||
 
 {{{
 	[user@host ~]$ gpg2ecc --list-keys
