@@ -3,7 +3,7 @@
 
 = Introduction =
 
-This document is a walkthrough for the steps needed to encrypt a message with a newly geenrated ECC key. 
+This document is a walkthrough for the steps needed to encrypt a message with a newly generated ECC key. 
 
 = Setup = 
 
@@ -88,7 +88,7 @@ You should now see ECC options:
    Pubkey: RSA, ELG, DSA, ECDH, ECDSA
 }}}
 
-Before we generate new key, let's save the current keyring (don't forget to copy it back). For demonstration purpose we effectively hide current keys from gnupg. Altertnatively, we can simpy use {{{cp}}} bellow, because new ECC keys co-exist perfectly with present public keys, like RSA keys.
+Before we generate new key, let's save the current keyring (don't forget to copy it back). For demonstration purpose we effectively hide current keys from gnupg. Alternatively, we can simply use {{{cp}}} bellow, because new ECC keys co-exist perfectly with present public keys, like RSA keys.
 
 {{{
    [user@host ~]$ mv -vb ~/.gnupg/pubring.gpg ~/.gnupg/pubring_saved.gpg
@@ -221,4 +221,3 @@ The rest of the document shows how this key can be used. Note that the behaviour
 	[user@host ~]$ diff _e _ && echo OK
 	OK
 }}}
-
