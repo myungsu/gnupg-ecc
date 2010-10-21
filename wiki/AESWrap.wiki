@@ -3,9 +3,9 @@
 
 = Introduction =
 
-Most of the time, as is the case with [http://sites.google.com/site/brainhub/pgp ECC in OpenPGP] IETF draft, AESWRAP is needed to wrap an AES key. The maximum size of such a payload is 32 bytes. In case of OpenPGP the symmetric key contains 3 additional bytes of metadata. AESWRAP algorithms expects the payload to be multiple of 8 bytes, thus the total size of payload is increased to 40 bytes. 
+Most of the time, as is the case with [http://sites.google.com/site/brainhub/pgp ECC in OpenPGP] IETF draft, AESWRAP is used to wrap an AES key. The maximum size of such a payload is 32 bytes. In OpenPGP case the symmetric key contains 3 additional bytes of metadata. AESWRAP algorithms expects the payload to be multiple of 8 bytes, thus the total size of payload is increased to 40 bytes.
 
-Let's focus on the OpenPGP case.  AESWRAP expands the output by 8 bytes. These 8 bytes contain the integrity data. Thus, the input is limited to 40 bytes and the output to 48 bytes. The small payload and output sizes which are capped at 48 bytes allow us to simplify the implementation of the algorithm by avoiding any loops and we can use fixed-size buffers too. 
+Let's focus on the OpenPGP case. AESWRAP expands the output by 8 bytes; these 8 bytes contain the integrity data. Thus, the input is limited to 40 bytes and the output to 48 bytes. The small payload and output sizes which are capped at 48 bytes allow us to simplify the implementation of the algorithm by avoiding inner loops and we can use fixed-size buffers too.
 
 This description is based on my year 2008 implementation that I placed in public domain. It currently shows up as a second hit if you simply search for [http://www.google.com/search?q=aeswrap&oe=utf-8 aeswrap], the first hit being the [http://tools.ietf.org/html/rfc3394 RFC3394]. It must have been useful.
 
@@ -366,4 +366,3 @@ int main( int argc, char *argv[] )  {
 }
 
 }}}
-
