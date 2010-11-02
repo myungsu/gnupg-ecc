@@ -3,20 +3,20 @@
 
 = Introduction =
 
-This document gives an overview of the interface between libgcrypt and gnupg. These are the modules that are distributed as separate binaries (such as RPMs in Fedora Code) by UNIX distributors, thus there is desire to maintain stable binary interface between the libgcrypt and gnupg. libgcrypt was separated from the gnupg in the 2.0 release.
+This document gives an overview of the interface between libgcrypt and gnupg. libgcrypt and gnupg are distributed as separate binary modules by UNIX distributors, for example, these are RPMs in Fedora Core (with names like libgcrypt-1.4.5-4.fc13.x86_64 and gnupg2-2.0.14-7.fc13.x86_64). Thus, there is desire to maintain stable binary interface between the libgcrypt and gnupg. libgcrypt was separated from the gnupg in the 2.0 release.
 
-ECC is known for its greater complexity of configuration parameters. It takes more data fields to fully define the ECC field than traditional modp field. For example, the following parameters are implicitly known (don't exist of trivial) for the traditional cryptography:
+ECC is known for its greater complexity of configuration parameters. It takes more data fields to fully define the ECC field than needed to define traditional modp field. For example, the following parameters are implicitly known (don't exist or trivial) for the traditional cryptography:
   * type of curve
   * definition of the curve
   * field generator
   * field order
   * field element representation
 
-This implementation's primary goal is to hide this complexity, to match the simplicity set forth by the [http://sites.google.com/site/brainhub/pgp ECC in OpenPGP]. What came out as a result of this effort is the libgcrypt interface that can compete with the RSA key operations in its simplicity, yet it doesn't deny extensibility.
+This implementation's primary goal is to hide this complexity, in other words, to match the simplicity set forth by the [http://sites.google.com/site/brainhub/pgp ECC in OpenPGP]. What came out as a result of this effort is the libgcrypt interface that can compete with the RSA key operations in its simplicity, yet it doesn't deny extensibility.
 
 == Field encoding ==
 
-Every field in the interface between gnupg and libgcyrpt is encoded as an MPI, except for small integers. For the most part, this is the traditional method employed by libgcrypt to pass data structures, such as a message to be encrypted with a public key. This project continues to use this method to communicate any sequence of octets, even though in many cases the data passed are not strictly integers.
+Every field in the interface between gnupg and libgcyrpt is encoded as an MPI, except for small integers. For example, a sequence of bytes to be encrypted with a public key is passed as an MPI. This project continues to use MPIs to pass around any sequence of octets, even though in many cases the data passed inside of MPIs are not strictly large integers, or in different words, will not be used as large integers in arithmetic operations.
 
 == size+body field encoding ==
 
