@@ -98,20 +98,27 @@ cd gnupg
 
 = Executing =
 
+  * First, make sure to run built version of gpg-agent
+
+   {{{
+killall gpg-agent
+agent/gpg-agent --daemon --write-env-file ./.gpg-agent-info --enable-ssh-support --debug-all --allow-preset-passphrase --verbose --log-file ./gpg-agent-verbose.log
+tail -f ./gpg-agent-verbose.log 
+   }}}
+
   * Running the built gpg2:
 
   {{{
 cd gnupg
-g10/gpg2 --gen-key
+g10/gpg2 --expert --gen-key
   }}}
 
-  will display the ECDSA + ECDH key generation option. Once you generate the key, you would work with it just as you do with any RSA key, encrypting/decrypting or signing/verifying as usual.
+  will display the ECDSA + ECDH key generation option. Once you generate the key, you would work with it just as you do with a typical RSA key, encrypting/decrypting or signing/verifying as usual.
 
 = Debugging =
 
   * Additional ECC-releated information is available with the the {{{--debug 15}}} option, for example:
 
   {{{
-g10/gpg2 --debug 15 --gen-key
+g10/gpg2 --debug 15 --expert --gen-key
   }}}
-
